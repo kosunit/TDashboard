@@ -82,11 +82,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 select.inp{cursor:pointer;-webkit-appearance:none;background:var(--bg3);padding:2px 4px;border-radius:3px;border:1px solid var(--border2);color:var(--text)}
 select.inp:focus{border-color:var(--blue)}
 
-.sb-ft{padding:6px 14px;display:flex;gap:12px;margin-top:auto;border-top:1px solid var(--border)}
-.ft-i{display:flex;align-items:center;gap:4px}
-.ft-d{width:6px;height:2px;border-radius:1px}
-.ft-l{font-size:10px;font-weight:500;font-family:var(--mono)}
-.ft-p{font-size:10px;color:var(--text2);font-family:var(--mono)}
+.sb-ft{padding:10px 14px;display:flex;gap:16px;margin-top:auto;border-top:1px solid var(--border)}
+.ft-i{display:flex;align-items:center;gap:6px}
+.ft-d{width:8px;height:2px;border-radius:1px}
+.ft-l{font-size:14px;font-weight:600;font-family:var(--mono)}
+.ft-p{font-size:14px;font-weight:500;color:var(--text);font-family:var(--mono)}
 
 /* charts */
 .charts{flex:1;min-width:0;display:flex;flex-direction:column;background:#0d1117}
@@ -130,20 +130,9 @@ canvas{position:absolute;inset:0;display:block}
 const UP = '#3ea96e', DN = '#e05555', LVL_C = '#4a8fd4';
 
 const TICKERS = [
-  {t:'ARWR',sector:'Healthcare',      industry:'Biotechnology'},
-  {t:'BC',  sector:'Consumer Cyclical',industry:'Recreational Vehicles'},
-  {t:'BLD', sector:'Industrials',     industry:'Engineering & Construction'},
-  {t:'CNM', sector:'Industrials',     industry:'Industrial Distribution'},
-  {t:'CRNX',sector:'Healthcare',      industry:'Biotechnology'},
-  {t:'HRI', sector:'Industrials',     industry:'Rental & Leasing Services'},
-  {t:'KN',  sector:'Technology',      industry:'Electronic Components'},
-  {t:'LPX', sector:'Industrials',     industry:'Building Products & Equipment'},
-  {t:'MOS', sector:'Basic Materials', industry:'Agricultural Inputs'},
-  {t:'NET', sector:'Technology',      industry:'Software - Infrastructure'},
-  {t:'RBRK',sector:'Technology',      industry:'Software - Infrastructure'},
-  {t:'SCI', sector:'Consumer Cyclical',industry:'Personal Services'},
-  {t:'VSCO',sector:'Consumer Cyclical',industry:'Apparel Retail'},
-  {t:'XYL', sector:'Industrials',     industry:'Specialty Industrial Machinery'},
+  {t:'ARWR'},
+  {t:'BC'},
+  {t:'BLD'},
 ];
 
 const LVL_TYPES = ['Излом тренда High','Излом тренда Low','Парабар High','Парабар Low','Лимитник High','Лимитник Low'];
@@ -202,12 +191,37 @@ function setOv(id,m){ const e=document.getElementById(id); if(e){ e.textContent=
 // ─── API: TWELVE DATA ─────────────────────────────────────
 const TD_KEY  = '503b2dad156042a2a5802d9f0ea89c5c';
 const TD_BASE = 'https://api.twelvedata.com';
-const cache   = {};
+const cache   = {}; // memory cache (session)
+const CACHE_TTL_D1  = 60 * 60 * 1000;       // 1 hour for daily bars
+const CACHE_TTL_H1  = 15 * 60 * 1000;       // 15 min for hourly
+const CACHE_TTL_M5  = 5  * 60 * 1000;       // 5 min for M5
+const CACHE_TTL_PX  = 3  * 60 * 1000;       // 3 min for live price
+
+function lsGet(key){
+  try{
+    const raw = localStorage.getItem('td_'+key);
+    if(!raw) return null;
+    const {ts, data} = JSON.parse(raw);
+    return {ts, data};
+  }catch(e){ return null; }
+}
+function lsSet(key, data, ttl){
+  try{ localStorage.setItem('td_'+key, JSON.stringify({ts:Date.now()+ttl, data})); }catch(e){}
+}
+function lsValid(key){
+  const r=lsGet(key);
+  return r && Date.now()<r.ts ? r.data : null;
+}
 
 // Twelve Data time_series → [{o,h,l,c,v,t}] sorted oldest→newest
 async function fetchTD(ticker, interval, outputsize){
   const key = `${ticker}|${interval}|${outputsize}`;
   if(cache[key]) return cache[key];
+  // check localStorage
+  const ttl = interval==='1day'?CACHE_TTL_D1 : interval==='1h'?CACHE_TTL_H1 : CACHE_TTL_M5;
+  const stored = lsValid(key);
+  if(stored){ cache[key]=stored; return stored; }
+
   const url = `${TD_BASE}/time_series?symbol=${ticker}&interval=${interval}&outputsize=${outputsize}&apikey=${TD_KEY}`;
   try {
     const r = await fetch(url);
@@ -226,6 +240,7 @@ async function fetchTD(ticker, interval, outputsize){
       t: new Date(v.datetime).getTime()
     }));
     cache[key] = bars;
+    lsSet(key, bars, ttl);
     return bars;
   } catch(e){ dbg(`fetch ${ticker} ${interval}: ${e.message}`); return []; }
 }
@@ -234,12 +249,39 @@ async function fetchTD(ticker, interval, outputsize){
 async function fetchPrice(ticker){
   const key = `price|${ticker}`;
   if(cache[key]) return cache[key];
+  const stored = lsValid(key);
+  if(stored){ cache[key]=stored; return stored; }
   try {
     const r = await fetch(`${TD_BASE}/price?symbol=${ticker}&apikey=${TD_KEY}`);
     const j = await r.json();
-    if(j.price){ cache[key]=parseFloat(j.price); return cache[key]; }
+    if(j.price){
+      const p = parseFloat(j.price);
+      cache[key] = p;
+      lsSet(key, p, CACHE_TTL_PX);
+      return p;
+    }
   } catch(e){}
   return null;
+}
+
+// Fetch sector + industry from TD profile endpoint
+async function fetchProfile(ticker){
+  const key = `profile|${ticker}`;
+  if(cache[key]) return cache[key];
+  const stored = lsValid(key);
+  if(stored){ cache[key]=stored; return stored; }
+  try {
+    const r = await fetch(`${TD_BASE}/profile?symbol=${ticker}&apikey=${TD_KEY}`);
+    const j = await r.json();
+    if(j.status==='error'||j.code) return {sector:'—',industry:'—'};
+    const result = {
+      sector:   j.sector   || '—',
+      industry: j.industry || '—',
+    };
+    cache[key] = result;
+    lsSet(key, result, 24*60*60*1000); // cache 24h — rarely changes
+    return result;
+  } catch(e){ return {sector:'—',industry:'—'}; }
 }
 
 function calcATR(bars, n=5){
@@ -253,30 +295,31 @@ function calcATR(bars, n=5){
 async function loadTicker(ticker){
   if(D[ticker]) return D[ticker];
 
-  // Fetch D1 (60 bars), M5 (100 bars), SPY D1, real-time price — in parallel
-  const [d1, m5, spyD1, livePrice] = await Promise.all([
-    fetchTD(ticker, '1day',  60),
+  // Fetch D1 (300 bars), M5 (100 bars), SPY D1, real-time price, profile — in parallel
+  const [d1, m5, spyD1, livePrice, profile] = await Promise.all([
+    fetchTD(ticker, '1day',  300),
     fetchTD(ticker, '5min',  100),
-    fetchTD('SPY',  '1day',  60),
+    fetchTD('SPY',  '1day',  300),
     fetchPrice(ticker),
+    fetchProfile(ticker),
   ]);
 
   const atrD1 = calcATR(d1, 5);
   const atrM5 = calcATR(m5, 5);
 
   // prevBar = second-to-last D1 bar (previous completed day)
-  const prevBar  = d1.length >= 2 ? d1[d1.length-2] : d1[0] || null;
-  const lastBar  = d1.length ? d1[d1.length-1] : null;
+  const prevBar   = d1.length >= 2 ? d1[d1.length-2] : d1[0] || null;
   const prevClose = prevBar ? prevBar.c : 0;
+  const prevDate  = prevBar ? fmtDateFull(prevBar.t) : '';
 
   // Current price: live if market open, else prev day close
   const curPrice = (isOpen() && livePrice) ? livePrice : prevClose;
-  const prevDate = prevBar ? fmtDateFull(prevBar.t) : '';
 
   const avgVolD1  = d1.length ? Math.round(d1.slice(-20).reduce((a,b)=>a+b.v,0)/Math.min(20,d1.length)) : 0;
   const lastVolM5 = m5.length ? Math.round(m5[m5.length-1].v) : 0;
 
-  D[ticker] = {curPrice, prevDate, atrD1, atrM5, avgVolD1, lastVolM5, d1, m5, spyD1};
+  D[ticker] = {curPrice, prevClose, prevDate, atrD1, atrM5, avgVolD1, lastVolM5, d1, m5, spyD1,
+               sector: profile.sector, industry: profile.industry};
   return D[ticker];
 }
 
@@ -339,14 +382,13 @@ function setFil(f){ activeFil=f; activeIdx=0; buildFbar(); buildNav(); selectIte
 function buildNav(){
   document.getElementById('nav').innerHTML = filtered().map(({t},i)=>{
     const d=D[t], u=U[t], cls=tClass(u.levelType);
-    const priceStr = d ? d.curPrice.toFixed(2) : '…';
+    const priceStr = d ? d.prevClose.toFixed(2) : '…';
     const loaded   = !!d;
     return `<div class="ni${i===activeIdx?' on':''}" onclick="selectItem(${i})">
       <div>
-        <div class="ni-t c${cls}">${t}</div>
+        <div class="ni-t c${cls}">${t} <span style="font-weight:400;color:var(--text2)">${priceStr}</span></div>
         <div class="ni-s">${u.levelType}</div>
       </div>
-      <div class="ni-p${loaded?'':' spin'}">${priceStr}</div>
     </div>`;
   }).join('');
 }
@@ -415,8 +457,8 @@ function showCard(ticker){
 
     <div class="sb-sec">
       <div class="st">Инструмент</div>
-      <div class="sr"><span class="sl">Сектор</span><span class="sv">${meta.sector}</span></div>
-      <div class="sr"><span class="sl">Индустрия</span><span class="sv" style="font-size:10px">${meta.industry}</span></div>
+      <div class="sr"><span class="sl">Сектор</span><span class="sv" id="sb-sector">${d ? d.sector : '…'}</span></div>
+      <div class="sr"><span class="sl">Индустрия</span><span class="sv" style="font-size:10px" id="sb-industry">${d ? d.industry : '…'}</span></div>
     </div>
 
     <div class="sb-sec">
@@ -530,7 +572,8 @@ function patchSidebar(ticker){
   set('sb-cp',  d.curPrice.toFixed(2));
   set('ft-c',   d.curPrice.toFixed(2));
   set('sb-pd',  d.prevDate);
-  set('sb-a1',  d.atrD1.toFixed(2));
+  set('sb-sector',  d.sector   || '—');
+  set('sb-industry',d.industry || '—');
   set('sb-a5',  d.atrM5.toFixed(2));
   set('sb-v1',  fmtN(d.avgVolD1));
   set('sb-v5',  fmtN(d.lastVolM5));
@@ -568,7 +611,7 @@ function drawChart(cid, wid, candles, level, spyNorm, labels){
   ctx.scale(DPR,DPR);
 
   const compact = H<230;
-  const GRID='rgba(255,255,255,0.05)', AX='rgba(160,175,190,0.6)';
+  const GRID='rgba(255,255,255,0.05)', AX='rgba(210,225,240,0.9)';
   const FSZ = compact?7.5:8.5;
   const LBH = compact?30:36;      // label area height
   const PL=4,PR=52,PT=compact?12:16,PB=LBH;
@@ -601,7 +644,7 @@ function drawChart(cid, wid, candles, level, spyNorm, labels){
     const n2=Math.min(spyNorm.length,candles.length);
     const sLo=lo+rng*0.04, sHi=lo+rng*0.90;
     const sw=cw/candles.length, off=candles.length-n2;
-    ctx.strokeStyle='rgba(160,180,200,0.28)';
+    ctx.strokeStyle='rgba(180,195,215,0.55)';
     ctx.lineWidth=1; ctx.setLineDash([]);
     ctx.beginPath();
     spyNorm.forEach((v,i)=>{
