@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Домашка</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1117;--bg2:#131920;--bg3:#1a2332;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#e2e8f0;--text2:#7a8fa6;--text3:#3a5068;
+  --blue:#4a8fd4;--blue2:#2d6aad;
+  --green:#3ea96e;--red:#e05555;--gold:#d4a017;--purple:#8b6be8;
+  --mono:'JetBrains Mono',monospace;--sans:'Onest',sans-serif;
+  --sb:230px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden}
+.app{display:flex;height:100vh;flex-direction:column}
+
+/* topbar */
+.topbar{display:flex;align-items:center;gap:16px;padding:0 20px;height:44px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--bg2)}
+.tb-title{font-size:13px;font-weight:600;letter-spacing:.04em}
+.tb-date{font-size:11px;color:var(--text2);font-family:var(--mono)}
+.tb-count{font-size:11px;color:var(--text2);font-family:var(--mono);margin-left:auto}
+
+/* filters */
+.fbar{display:flex;align-items:center;gap:6px;padding:0 16px;height:34px;flex-shrink:0;border-bottom:1px solid var(--border);overflow-x:auto}
+.fbar::-webkit-scrollbar{display:none}
+.fb{padding:2px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-family:var(--sans);font-weight:500;cursor:pointer;white-space:nowrap;transition:all .12s}
+.fb:hover{border-color:var(--border2);color:var(--text)}
+.fb.on{background:var(--blue2);border-color:var(--blue);color:#fff}
+
+/* debug */
+#dbg{display:none;padding:4px 20px;font-size:10px;font-family:var(--mono);color:#e8b83a;background:#1a1100;border-bottom:1px solid #3a2600;flex-shrink:0}
+
+/* body */
+.body{display:flex;flex:1;overflow:hidden}
+
+/* nav */
+.nav{width:185px;flex-shrink:0;border-right:1px solid var(--border);background:var(--bg2);overflow-y:auto}
+.nav::-webkit-scrollbar{width:3px}
+.nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.ni{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
+.ni:hover{background:var(--bg3)}
+.ni.on{background:var(--bg3);border-left:2px solid var(--blue);padding-left:10px}
+.ni-t{font-size:13px;font-weight:600;font-family:var(--mono)}
+.ni-s{font-size:9px;color:var(--text2);margin-top:1px}
+.ni-p{font-size:11px;font-family:var(--mono);color:var(--blue)}
+.ni-p.spin{color:var(--text3);animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:.9}}
+.cH{color:var(--green)}.cL{color:var(--red)}.cP{color:var(--gold)}.cLim{color:var(--purple)}
+
+/* card */
+.card-area{flex:1;min-width:0;display:flex;overflow:hidden}
+.no-card{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px}
+
+/* sidebar */
+.sb{width:var(--sb);flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;background:var(--bg2)}
+.sb::-webkit-scrollbar{width:3px}
+.sb::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+.sb-head{padding:12px 14px 10px;border-bottom:1px solid var(--border)}
+.sb-tr{display:flex;align-items:baseline;gap:7px;margin-bottom:2px}
+.sb-tk{font-size:20px;font-weight:600;font-family:var(--mono)}
+.sb-cp{font-size:18px;font-weight:500;font-family:var(--mono);color:var(--blue)}
+.sb-cl{font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:1px}
+
+.sb-sec{padding:8px 14px;border-bottom:1px solid var(--border)}
+.st{font-size:9px;font-weight:600;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;margin-bottom:5px}
+.sr{display:flex;justify-content:space-between;align-items:center;padding:2px 0;gap:4px}
+.sl{font-size:11px;color:var(--text2);flex-shrink:0}
+.sv{font-size:11px;font-weight:500;font-family:var(--mono);color:var(--text);text-align:right}
+.sv.b{color:var(--blue)}.sv.g{color:var(--gold)}
+
+/* editable input */
+.inp{background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-size:11px;font-weight:500;font-family:var(--mono);text-align:right;padding:1px 2px;width:100%;max-width:120px;outline:none;transition:border-color .15s;cursor:text}
+.inp:hover{border-bottom-color:var(--border2)}
+.inp:focus{border-bottom-color:var(--blue);color:var(--blue)}
+select.inp{cursor:pointer;-webkit-appearance:none;background:var(--bg3);padding:2px 4px;border-radius:3px;border:1px solid var(--border2);color:var(--text)}
+select.inp:focus{border-color:var(--blue)}
+
+.sb-ft{padding:6px 14px;display:flex;gap:12px;margin-top:auto;border-top:1px solid var(--border)}
+.ft-i{display:flex;align-items:center;gap:4px}
+.ft-d{width:6px;height:2px;border-radius:1px}
+.ft-l{font-size:10px;font-weight:500;font-family:var(--mono)}
+.ft-p{font-size:10px;color:var(--text2);font-family:var(--mono)}
+
+/* charts */
+.charts{flex:1;min-width:0;display:flex;flex-direction:column;background:#0d1117}
+.c-d1{flex:1.65;position:relative;border-bottom:1px solid var(--border);overflow:hidden}
+.c-bot{display:flex;flex:1;overflow:hidden}
+.c-h1,.c-m5{flex:1;position:relative;overflow:hidden}
+.c-h1{border-right:1px solid var(--border)}
+canvas{position:absolute;inset:0;display:block}
+.clbl{position:absolute;top:5px;left:7px;font-size:10px;font-weight:600;font-family:var(--mono);color:var(--text2);z-index:2;pointer-events:none;letter-spacing:.05em}
+.cov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(160,175,190,0.4);font-family:var(--mono);z-index:3;background:#141c28}
+/* custom colored dropdown */
+.dd-wrap{position:relative;width:100%;max-width:140px}
+.dd-sel{display:flex;align-items:center;justify-content:space-between;gap:4px;cursor:pointer;padding:2px 4px;border-radius:3px;border:1px solid var(--border2);background:var(--bg3);transition:border-color .15s}
+.dd-sel:hover{border-color:var(--blue)}
+.dd-val{font-size:11px;font-weight:500;font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.dd-arr{font-size:9px;color:var(--text2);flex-shrink:0;transition:transform .15s}
+.dd-wrap.open .dd-arr{transform:rotate(180deg)}
+.dd-list{display:none;position:absolute;right:0;top:calc(100% + 3px);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;z-index:50;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.dd-wrap.open .dd-list{display:block}
+.dd-opt{font-size:11px;font-weight:500;font-family:var(--mono);padding:6px 10px;cursor:pointer;transition:background .1s;white-space:nowrap}
+.dd-opt:hover{background:var(--bg2)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="tb-title">ДОМАШКА</div>
+    <div class="tb-date" id="tb-date"></div>
+    <div class="tb-count" id="tb-count"></div>
+  </div>
+  <div class="fbar" id="fbar"></div>
+  <div id="dbg"></div>
+  <div class="body">
+    <div class="nav" id="nav"></div>
+    <div class="card-area" id="card-area"><div class="no-card">Выберите инструмент</div></div>
+  </div>
+</div>
+
+<script>
+// ─── CONSTANTS ────────────────────────────────────────────
+const UP = '#3ea96e', DN = '#e05555', LVL_C = '#4a8fd4';
+
+const TICKERS = [
+  {t:'ARWR',sector:'Healthcare',      industry:'Biotechnology'},
+  {t:'BC',  sector:'Consumer Cyclical',industry:'Recreational Vehicles'},
+  {t:'BLD', sector:'Industrials',     industry:'Engineering & Construction'},
+  {t:'CNM', sector:'Industrials',     industry:'Industrial Distribution'},
+  {t:'CRNX',sector:'Healthcare',      industry:'Biotechnology'},
+  {t:'HRI', sector:'Industrials',     industry:'Rental & Leasing Services'},
+  {t:'KN',  sector:'Technology',      industry:'Electronic Components'},
+  {t:'LPX', sector:'Industrials',     industry:'Building Products & Equipment'},
+  {t:'MOS', sector:'Basic Materials', industry:'Agricultural Inputs'},
+  {t:'NET', sector:'Technology',      industry:'Software - Infrastructure'},
+  {t:'RBRK',sector:'Technology',      industry:'Software - Infrastructure'},
+  {t:'SCI', sector:'Consumer Cyclical',industry:'Personal Services'},
+  {t:'VSCO',sector:'Consumer Cyclical',industry:'Apparel Retail'},
+  {t:'XYL', sector:'Industrials',     industry:'Specialty Industrial Machinery'},
+];
+
+const LVL_TYPES = ['Излом тренда High','Излом тренда Low','Парабар High','Парабар Low','Лимитник High','Лимитник Low'];
+const CRITERIA  = ['Возврат к уровню','Возврат к уровню парабара','Поджатие и ЛП последним баром','Без поджатия'];
+
+// Per-ticker state: user-editable
+const U = {};
+TICKERS.forEach(({t}) => U[t] = {levelPrice:'', levelType:'Излом тренда High', criteria:'Возврат к уровню'});
+
+// Per-ticker API results
+const D = {}; // {curPrice, prevDate, atrD1, atrM5, avgVolD1, lastVolM5, d1[], m5[], spyD1[]}
+
+let activeFil = 'Все', activeIdx = 0;
+
+// ─── UTILS ────────────────────────────────────────────────
+const toYMD = d => d.toISOString().slice(0,10);
+const dAgo  = n => { const d=new Date(); d.setDate(d.getDate()-n); return toYMD(d); };
+const TODAY = toYMD(new Date());
+const pad   = n => String(n).padStart(2,'0');
+const fmtN  = n => Number(n).toLocaleString('ru-RU');
+
+function todayStr(){
+  const d=new Date();
+  return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear();
+}
+function tsToStr(ts, mode){
+  // ts is milliseconds from Date.getTime() — TD datetimes parsed as local
+  const d = new Date(ts);
+  if(mode==='d') return pad(d.getDate())+'.'+pad(d.getMonth()+1);
+  if(mode==='h') return pad(d.getHours())+':00';
+  return pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function fmtDateFull(ts){
+  const d=new Date(ts);
+  return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear();
+}
+function isOpen(){
+  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+  if(et.getDay()===0||et.getDay()===6) return false;
+  const m=et.getHours()*60+et.getMinutes();
+  return m>=570 && m<960;
+}
+function tClass(type){
+  if(!type) return 'H';
+  if(type.includes('High')&&type.includes('Излом')) return 'H';
+  if(type.includes('Low') &&type.includes('Излом')) return 'L';
+  if(type.includes('Парабар'))  return 'P';
+  if(type.includes('Лимитник')) return 'Lim';
+  return 'H';
+}
+function dbg(m){ const e=document.getElementById('dbg'); e.textContent=m; e.style.display='block'; }
+function dbgHide(){ setTimeout(()=>document.getElementById('dbg').style.display='none', 4000); }
+function clrOv(id){ const e=document.getElementById(id); if(e) e.style.display='none'; }
+function setOv(id,m){ const e=document.getElementById(id); if(e){ e.textContent=m; e.style.display='flex'; } }
+
+// ─── API: TWELVE DATA ─────────────────────────────────────
+const TD_KEY  = '503b2dad156042a2a5802d9f0ea89c5c';
+const TD_BASE = 'https://api.twelvedata.com';
+const cache   = {};
+
+// Twelve Data time_series → [{o,h,l,c,v,t}] sorted oldest→newest
+async function fetchTD(ticker, interval, outputsize){
+  const key = `${ticker}|${interval}|${outputsize}`;
+  if(cache[key]) return cache[key];
+  const url = `${TD_BASE}/time_series?symbol=${ticker}&interval=${interval}&outputsize=${outputsize}&apikey=${TD_KEY}`;
+  try {
+    const r = await fetch(url);
+    const j = await r.json();
+    if(j.status === 'error' || j.code){
+      dbg(`TD error [${ticker} ${interval}]: ${j.message}`); return [];
+    }
+    const values = j.values || [];
+    // TD returns newest-first → reverse to oldest-first
+    const bars = values.slice().reverse().map(v => ({
+      o: parseFloat(v.open),
+      h: parseFloat(v.high),
+      l: parseFloat(v.low),
+      c: parseFloat(v.close),
+      v: parseFloat(v.volume||0),
+      t: new Date(v.datetime).getTime()
+    }));
+    cache[key] = bars;
+    return bars;
+  } catch(e){ dbg(`fetch ${ticker} ${interval}: ${e.message}`); return []; }
+}
+
+// Current price (real-time or delayed)
+async function fetchPrice(ticker){
+  const key = `price|${ticker}`;
+  if(cache[key]) return cache[key];
+  try {
+    const r = await fetch(`${TD_BASE}/price?symbol=${ticker}&apikey=${TD_KEY}`);
+    const j = await r.json();
+    if(j.price){ cache[key]=parseFloat(j.price); return cache[key]; }
+  } catch(e){}
+  return null;
+}
+
+function calcATR(bars, n=5){
+  if(bars.length < 2) return 0;
+  const trs=[];
+  for(let i=Math.max(1,bars.length-n-1); i<bars.length; i++)
+    trs.push(Math.max(bars[i].h-bars[i].l, Math.abs(bars[i].h-bars[i-1].c), Math.abs(bars[i].l-bars[i-1].c)));
+  return trs.slice(-n).reduce((a,b)=>a+b,0) / Math.min(n,trs.length) || 0;
+}
+
+async function loadTicker(ticker){
+  if(D[ticker]) return D[ticker];
+
+  // Fetch D1 (60 bars), M5 (100 bars), SPY D1, real-time price — in parallel
+  const [d1, m5, spyD1, livePrice] = await Promise.all([
+    fetchTD(ticker, '1day',  60),
+    fetchTD(ticker, '5min',  100),
+    fetchTD('SPY',  '1day',  60),
+    fetchPrice(ticker),
+  ]);
+
+  const atrD1 = calcATR(d1, 5);
+  const atrM5 = calcATR(m5, 5);
+
+  // prevBar = second-to-last D1 bar (previous completed day)
+  const prevBar  = d1.length >= 2 ? d1[d1.length-2] : d1[0] || null;
+  const lastBar  = d1.length ? d1[d1.length-1] : null;
+  const prevClose = prevBar ? prevBar.c : 0;
+
+  // Current price: live if market open, else prev day close
+  const curPrice = (isOpen() && livePrice) ? livePrice : prevClose;
+  const prevDate = prevBar ? fmtDateFull(prevBar.t) : '';
+
+  const avgVolD1  = d1.length ? Math.round(d1.slice(-20).reduce((a,b)=>a+b.v,0)/Math.min(20,d1.length)) : 0;
+  const lastVolM5 = m5.length ? Math.round(m5[m5.length-1].v) : 0;
+
+  D[ticker] = {curPrice, prevDate, atrD1, atrM5, avgVolD1, lastVolM5, d1, m5, spyD1};
+  return D[ticker];
+}
+
+// ─── H1: fetch enough bars to fill chart width ────────────
+function h1BarsNeeded(){
+  const area = document.getElementById('card-area');
+  if(!area) return 100;
+  const halfW = Math.max(200, Math.floor((area.clientWidth - 230 - 56) / 2));
+  return Math.min(500, Math.ceil(halfW / 3)); // min 3px per candle, max 500 (TD limit)
+}
+
+async function loadH1(ticker){
+  const n = h1BarsNeeded();
+  const key = `${ticker}|1h|${n}`;
+  if(cache[key]) return cache[key];
+  return fetchTD(ticker, '1h', n);
+}
+async function loadSpyH1(){
+  const n = h1BarsNeeded();
+  const key = `SPY|1h|${n}`;
+  if(cache[key]) return cache[key];
+  return fetchTD('SPY', '1h', n);
+}
+
+// ─── CLOSE TO LEVEL calc ──────────────────────────────────
+function closeToLevel(ticker){
+  const d = D[ticker], u = U[ticker];
+  if(!d || !u.levelPrice || !d.atrD1) return '—';
+  const lp = parseFloat(u.levelPrice);
+  if(isNaN(lp)) return '—';
+  return ((Math.abs(d.curPrice - lp) / d.atrD1) * 100).toFixed(1) + '%';
+}
+
+// ─── SPY normalise ────────────────────────────────────────
+function normSpy(spy, target){
+  if(!spy||!spy.length||!target||!target.length) return null;
+  const n = Math.min(spy.length, target.length);
+  const cl = spy.slice(-n).map(b=>b.c);
+  const mn=Math.min(...cl), mx=Math.max(...cl);
+  if(mx===mn) return cl.map(()=>0.5);
+  return cl.map(v=>(v-mn)/(mx-mn));
+}
+
+// ─── FILTERS ──────────────────────────────────────────────
+function filtered(){
+  if(activeFil==='Все') return TICKERS;
+  return TICKERS.filter(({t})=>U[t].levelType===activeFil);
+}
+
+function buildFbar(){
+  const types = ['Все', ...LVL_TYPES];
+  document.getElementById('fbar').innerHTML = types.map(f=>
+    `<button class="fb${f===activeFil?' on':''}" onclick="setFil('${f}')">${f}</button>`
+  ).join('');
+  document.getElementById('tb-count').textContent = filtered().length+'/'+TICKERS.length;
+}
+function setFil(f){ activeFil=f; activeIdx=0; buildFbar(); buildNav(); selectItem(0); }
+
+// ─── NAV ──────────────────────────────────────────────────
+function buildNav(){
+  document.getElementById('nav').innerHTML = filtered().map(({t},i)=>{
+    const d=D[t], u=U[t], cls=tClass(u.levelType);
+    const priceStr = d ? d.curPrice.toFixed(2) : '…';
+    const loaded   = !!d;
+    return `<div class="ni${i===activeIdx?' on':''}" onclick="selectItem(${i})">
+      <div>
+        <div class="ni-t c${cls}">${t}</div>
+        <div class="ni-s">${u.levelType}</div>
+      </div>
+      <div class="ni-p${loaded?'':' spin'}">${priceStr}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectItem(i){
+  activeIdx = i;
+  buildNav();
+  const item = filtered()[i];
+  if(item) showCard(item.t);
+}
+
+// ─── RENDER CARD ──────────────────────────────────────────
+function showCard(ticker){
+  const meta = TICKERS.find(x=>x.t===ticker);
+  const d = D[ticker];
+  const u = U[ticker];
+
+  const curStr    = d ? d.curPrice.toFixed(2) : '…';
+  const prevDate  = d ? d.prevDate : '…';
+  const atrD1Str  = d ? d.atrD1.toFixed(2) : '…';
+  const atrM5Str  = d ? d.atrM5.toFixed(2) : '…';
+  const vD1Str    = d ? fmtN(d.avgVolD1)  : '…';
+  const vM5Str    = d ? fmtN(d.lastVolM5) : '…';
+  const ctlStr    = closeToLevel(ticker);
+  const mktLabel  = isOpen() ? 'текущая (рынок открыт)' : 'закрытие предыдущего дня';
+
+  document.getElementById('card-area').innerHTML = `
+  <div class="sb">
+    <div class="sb-head">
+      <div class="sb-tr">
+        <span class="sb-tk">${ticker}</span>
+        <span class="sb-cp" id="sb-cp">${curStr}</span>
+      </div>
+      <div class="sb-cl">${mktLabel}</div>
+    </div>
+
+    <div class="sb-sec">
+      <div class="st">Уровень</div>
+      <div class="sr">
+        <span class="sl">Цена</span>
+        <input class="inp" type="number" step="0.01" placeholder="задайте уровень"
+          value="${u.levelPrice}"
+          oninput="onLvl('${ticker}',this.value)">
+      </div>
+      <div class="sr"><span class="sl">Дата</span><span class="sv" id="sb-pd">${prevDate}</span></div>
+      <div class="sr">
+        <span class="sl">Тип</span>
+        <div class="dd-wrap" id="dd-type">
+          <div class="dd-sel" onclick="toggleDD('dd-type')">
+            <span class="dd-val" id="dd-type-val" style="color:${u.levelType.toLowerCase().includes('low')?'var(--red)':'var(--green)'}">${u.levelType}</span>
+            <span class="dd-arr">▾</span>
+          </div>
+          <div class="dd-list" id="dd-type-list">
+            ${LVL_TYPES.map(lt=>`<div class="dd-opt" style="color:${lt.toLowerCase().includes('low')?'var(--red)':'var(--green)'}" onclick="pickType('${ticker}','${lt}')">${lt}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="sr">
+        <span class="sl">Критерии</span>
+        <select class="inp" onchange="onCrit('${ticker}',this.value)">
+          ${CRITERIA.map(c=>`<option${c===u.criteria?' selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="sr"><span class="sl">Закр. до уровня</span><span class="sv g" id="sb-ctl">${ctlStr}</span></div>
+    </div>
+
+    <div class="sb-sec">
+      <div class="st">Инструмент</div>
+      <div class="sr"><span class="sl">Сектор</span><span class="sv">${meta.sector}</span></div>
+      <div class="sr"><span class="sl">Индустрия</span><span class="sv" style="font-size:10px">${meta.industry}</span></div>
+    </div>
+
+    <div class="sb-sec">
+      <div class="st">Технические данные</div>
+      <div class="sr"><span class="sl">ATR D1 (5д)</span><span class="sv b" id="sb-a1">${atrD1Str}</span></div>
+      <div class="sr"><span class="sl">ATR M5 (5б)</span><span class="sv b" id="sb-a5">${atrM5Str}</span></div>
+      <div class="sr"><span class="sl">Ср. объём D1</span><span class="sv" id="sb-v1">${vD1Str}</span></div>
+      <div class="sr"><span class="sl">Объём M5</span><span class="sv" id="sb-v5">${vM5Str}</span></div>
+    </div>
+
+    <div class="sb-ft">
+      <div class="ft-i">
+        <div class="ft-d" style="background:${DN}"></div>
+        <span class="ft-l">${ticker}</span>
+        <span class="ft-p" id="ft-c">${curStr}</span>
+      </div>
+      <div class="ft-i">
+        <div class="ft-d" style="background:#4a5f73"></div>
+        <span class="ft-l">SPY</span>
+        <span class="ft-p" id="ft-s">…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="c-d1" id="cw-d1">
+      <div class="clbl">D1</div>
+      <canvas id="c-d1"></canvas>
+      <div class="cov" id="ov-d1">Загрузка…</div>
+    </div>
+    <div class="c-bot">
+      <div class="c-h1" id="cw-h1">
+        <div class="clbl">H1</div>
+        <canvas id="c-h1"></canvas>
+        <div class="cov" id="ov-h1">Загрузка…</div>
+      </div>
+      <div class="c-m5" id="cw-m5">
+        <div class="clbl">M5</div>
+        <canvas id="c-m5"></canvas>
+        <div class="cov" id="ov-m5">Загрузка…</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Draw immediately from cache if available, then load missing
+  renderCharts(ticker);
+  loadAndRender(ticker);
+}
+
+// ─── LOAD + RENDER ────────────────────────────────────────
+async function loadAndRender(ticker){
+  if(!D[ticker]){
+    await loadTicker(ticker);
+    patchSidebar(ticker);
+    buildNav();
+  }
+  const d = D[ticker];
+  if(!d) return;
+
+  // SPY footer
+  if(d.spyD1 && d.spyD1.length){
+    const el=document.getElementById('ft-s');
+    if(el) el.textContent = d.spyD1[d.spyD1.length-1].c.toFixed(2);
+  }
+
+  // Load H1 in parallel with SPY H1
+  const [h1, spyH1] = await Promise.all([loadH1(ticker), loadSpyH1()]);
+
+  renderCharts(ticker, h1, spyH1);
+
+  dbg(`${ticker} D1=${d.d1.length} H1=${h1.length} M5=${d.m5.length} | ATR D1=${d.atrD1.toFixed(2)} M5=${d.atrM5.toFixed(2)}`);
+  dbgHide();
+}
+
+function renderCharts(ticker, h1Bars, spyH1){
+  const d = D[ticker];
+  const lvl = parseFloat(U[ticker].levelPrice) || null;
+
+  // D1
+  if(d && d.d1 && d.d1.length){
+    const labels = d.d1.map(b=>tsToStr(b.t,'d'));
+    drawChart('c-d1','cw-d1', d.d1, lvl, normSpy(d.spyD1, d.d1), labels);
+    clrOv('ov-d1');
+  } else {
+    setOv('ov-d1','Нет D1 данных');
+  }
+
+  // H1
+  if(h1Bars && h1Bars.length){
+    const labels = h1Bars.map(b=>tsToStr(b.t,'h'));
+    drawChart('c-h1','cw-h1', h1Bars, lvl, normSpy(spyH1, h1Bars), labels);
+    clrOv('ov-h1');
+  } else if(h1Bars !== undefined){
+    setOv('ov-h1','Нет H1 данных');
+  }
+
+  // M5
+  if(d && d.m5 && d.m5.length){
+    const labels = d.m5.map(b=>tsToStr(b.t,'m'));
+    drawChart('c-m5','cw-m5', d.m5, lvl, null, labels);
+    clrOv('ov-m5');
+  } else if(d){
+    setOv('ov-m5','Нет M5 данных');
+  }
+}
+
+function patchSidebar(ticker){
+  const d = D[ticker];
+  if(!d) return;
+  const set = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+  set('sb-cp',  d.curPrice.toFixed(2));
+  set('ft-c',   d.curPrice.toFixed(2));
+  set('sb-pd',  d.prevDate);
+  set('sb-a1',  d.atrD1.toFixed(2));
+  set('sb-a5',  d.atrM5.toFixed(2));
+  set('sb-v1',  fmtN(d.avgVolD1));
+  set('sb-v5',  fmtN(d.lastVolM5));
+  set('sb-ctl', closeToLevel(ticker));
+}
+
+// ─── EDITABLE HANDLERS ────────────────────────────────────
+function onLvl(ticker, val){
+  U[ticker].levelPrice = val;
+  const el = document.getElementById('sb-ctl');
+  if(el) el.textContent = closeToLevel(ticker);
+  // Redraw all charts with new level line
+  redrawAll(ticker);
+}
+function onType(ticker, val){ U[ticker].levelType = val; buildFbar(); buildNav(); }
+function onCrit(ticker, val){ U[ticker].criteria = val; }
+
+async function redrawAll(ticker){
+  const d = D[ticker]; if(!d) return;
+  const [h1, spyH1] = await Promise.all([loadH1(ticker), loadSpyH1()]);
+  renderCharts(ticker, h1, spyH1);
+}
+
+// ─── DRAW CHART ───────────────────────────────────────────
+function drawChart(cid, wid, candles, level, spyNorm, labels){
+  const canvas = document.getElementById(cid);
+  const wrap   = document.getElementById(wid);
+  if(!canvas||!wrap||!candles.length) return;
+  const W=wrap.clientWidth, H=wrap.clientHeight;
+  if(!W||!H) return;
+  const DPR = Math.min(window.devicePixelRatio||1,2);
+  canvas.width=W*DPR; canvas.height=H*DPR;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(DPR,DPR);
+
+  const compact = H<230;
+  const GRID='rgba(255,255,255,0.05)', AX='rgba(160,175,190,0.6)';
+  const FSZ = compact?7.5:8.5;
+  const LBH = compact?30:36;      // label area height
+  const PL=4,PR=52,PT=compact?12:16,PB=LBH;
+  const VH = compact?14:20;       // volume bar height
+  const cw=W-PL-PR, ch=H-PT-PB, pH=ch-VH-4;
+
+  ctx.fillStyle='#141c28'; ctx.fillRect(0,0,W,H);
+
+  // price range
+  const hs=candles.map(c=>c.h), ls=candles.map(c=>c.l);
+  if(level!=null){hs.push(level);ls.push(level)}
+  let hi=Math.max(...hs), lo=Math.min(...ls);
+  const rng=hi-lo; hi+=rng*0.08; lo-=rng*0.06;
+  const py=v=>PT+pH-(v-lo)/(hi-lo)*pH;
+
+  // grid + price axis
+  const ticks=compact?3:5;
+  ctx.strokeStyle=GRID; ctx.lineWidth=0.5; ctx.setLineDash([]);
+  for(let i=0;i<=ticks;i++){
+    const v=lo+(hi-lo)*i/ticks, y=py(v);
+    ctx.beginPath(); ctx.moveTo(PL,y); ctx.lineTo(PL+cw,y); ctx.stroke();
+    ctx.fillStyle=AX;
+    ctx.font=`${FSZ}px JetBrains Mono,monospace`;
+    ctx.textAlign='left';
+    ctx.fillText(v.toFixed(2), PL+cw+3, y+3);
+  }
+
+  // SPY line (grey, behind candles)
+  if(spyNorm && spyNorm.length){
+    const n2=Math.min(spyNorm.length,candles.length);
+    const sLo=lo+rng*0.04, sHi=lo+rng*0.90;
+    const sw=cw/candles.length, off=candles.length-n2;
+    ctx.strokeStyle='rgba(160,180,200,0.28)';
+    ctx.lineWidth=1; ctx.setLineDash([]);
+    ctx.beginPath();
+    spyNorm.forEach((v,i)=>{
+      const x=PL+(off+i)*sw+sw/2;
+      const y=PT+pH-(v*(sHi-sLo)+sLo-lo)/(hi-lo)*pH;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+  }
+
+  // level line
+  if(level!=null){
+    const ly=py(level);
+    ctx.strokeStyle=LVL_C; ctx.lineWidth=1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(PL,ly); ctx.lineTo(PL+cw,ly); ctx.stroke();
+    ctx.fillStyle=LVL_C;
+    ctx.font=`bold ${FSZ}px JetBrains Mono,monospace`;
+    ctx.textAlign='left';
+    ctx.fillText(level.toFixed(2), PL+cw+3, ly+3.5);
+  }
+
+  // candles
+  const n=candles.length, sw=cw/n;
+  const bw=Math.max(1, sw*0.55);
+  const maxV=Math.max(...candles.map(c=>c.v));
+
+  candles.forEach((c,i)=>{
+    const x=PL+i*sw+sw/2;
+    const col=c.c>=c.o?UP:DN;
+    ctx.strokeStyle=col; ctx.lineWidth=Math.max(0.6,sw*0.07); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x,py(c.h)); ctx.lineTo(x,py(c.l)); ctx.stroke();
+    const by=py(Math.max(c.o,c.c)), bh=Math.max(1,Math.abs(py(c.o)-py(c.c)));
+    ctx.fillStyle=col; ctx.fillRect(x-bw/2,by,bw,bh);
+    ctx.fillStyle='rgba(255,255,255,0.08)';
+    ctx.fillRect(x-bw/2, PT+pH+4, bw, (c.v/maxV)*VH);
+  });
+
+  // x-axis labels — vertical (rotated -90°)
+  if(labels && labels.length){
+    const step = Math.max(1, Math.ceil((compact?9:10)/sw));
+    const yBase = PT+pH+VH+4;
+    ctx.fillStyle=AX;
+    ctx.font=`${FSZ}px JetBrains Mono,monospace`;
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    labels.forEach((lbl,i)=>{
+      if(i%step!==0) return;
+      const x=PL+i*sw+sw/2;
+      ctx.save(); ctx.translate(x,yBase); ctx.rotate(-Math.PI/2);
+      ctx.fillText(lbl,0,0); ctx.restore();
+    });
+    ctx.textBaseline='alphabetic';
+  }
+}
+
+// ─── CUSTOM DROPDOWN ──────────────────────────────────────
+function toggleDD(id){
+  const el=document.getElementById(id);
+  const isOpen=el.classList.contains('open');
+  // close all open dropdowns first
+  document.querySelectorAll('.dd-wrap.open').forEach(d=>d.classList.remove('open'));
+  if(!isOpen) el.classList.add('open');
+}
+// Close dropdown when clicking outside
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.dd-wrap'))
+    document.querySelectorAll('.dd-wrap.open').forEach(d=>d.classList.remove('open'));
+});
+
+function pickType(ticker, val){
+  U[ticker].levelType = val;
+  // update displayed value + color
+  const valEl=document.getElementById('dd-type-val');
+  if(valEl){
+    valEl.textContent=val;
+    valEl.style.color=val.toLowerCase().includes('low')?'var(--red)':'var(--green)';
+  }
+  document.getElementById('dd-type').classList.remove('open');
+  buildFbar(); buildNav();
+}
+
+// ─── INIT ─────────────────────────────────────────────────
+document.getElementById('tb-date').textContent = todayStr();
+buildFbar();
+buildNav();
+selectItem(0);
+
+// Preload all tickers in background, refresh nav as each loads
+(async()=>{
+  await Promise.all(TICKERS.map(async ({t}) => {
+    await loadTicker(t);
+    buildNav();
+    // If this ticker is currently displayed, patch sidebar
+    const cur = filtered()[activeIdx];
+    if(cur && cur.t === t) patchSidebar(t);
+  }));
+})();
+
+window.addEventListener('resize', ()=>{
+  const cur = filtered()[activeIdx];
+  if(cur) redrawAll(cur.t);
+});
+</script>
+</body>
+</html>
