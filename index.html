@@ -655,9 +655,8 @@ function renderCharts(ticker, h1Bars, spyH1){
   // D1
   if(d && d.d1 && d.d1.length){
     const labels = d.d1.map(b=>tsToStr(b.t,'d'));
-    const meta = drawChart('c-d1','cw-d1', d.d1, lvl, normSpy(d.spyD1, d.d1), labels);
+    drawChart('c-d1','cw-d1', d.d1, lvl, normSpy(d.spyD1, d.d1), labels);
     clrOv('ov-d1');
-    if(meta) attachDrag('c-d1', ticker, meta, d.d1, normSpy(d.spyD1,d.d1), labels);
   } else {
     setOv('ov-d1','Нет D1 данных');
   }
@@ -718,9 +717,9 @@ async function redrawAll(ticker){
 function drawChart(cid, wid, candles, level, spyNorm, labels){
   const canvas = document.getElementById(cid);
   const wrap   = document.getElementById(wid);
-  if(!canvas||!wrap||!candles.length) return null;
+  if(!canvas||!wrap||!candles.length) return;
   const W=wrap.clientWidth, H=wrap.clientHeight;
-  if(!W||!H) return null;
+  if(!W||!H) return;
   const DPR = Math.min(window.devicePixelRatio||1,2);
   canvas.width=W*DPR; canvas.height=H*DPR;
   canvas.style.width=W+'px'; canvas.style.height=H+'px';
@@ -743,7 +742,6 @@ function drawChart(cid, wid, candles, level, spyNorm, labels){
   let hi=Math.max(...hs), lo=Math.min(...ls);
   const rng=hi-lo; hi+=rng*0.08; lo-=rng*0.06;
   const py  = v  => PT+pH-(v-lo)/(hi-lo)*pH;
-  const pyInv = y => lo + (1-(y-PT)/pH)*(hi-lo); // pixel → price
 
   // Choose a nice tick step so labels don't overlap
   // Target ~8-12 ticks for D1, fewer for compact
@@ -789,13 +787,9 @@ function drawChart(cid, wid, candles, level, spyNorm, labels){
     ctx.stroke();
   }
 
-  // level line — thicker for easier drag
+  // level line
   if(level!=null){
     const ly=py(level);
-    // subtle grab-zone glow
-    ctx.strokeStyle='rgba(74,143,212,0.15)'; ctx.lineWidth=10; ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(PL,ly); ctx.lineTo(PL+cw,ly); ctx.stroke();
-    // main line
     ctx.strokeStyle=LVL_C; ctx.lineWidth=1.5; ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(PL,ly); ctx.lineTo(PL+cw,ly); ctx.stroke();
     ctx.fillStyle=LVL_C;
@@ -843,105 +837,6 @@ function drawChart(cid, wid, candles, level, spyNorm, labels){
     });
     ctx.textBaseline='alphabetic';
   }
-  return { pyInv, PT, pH };
-}
-
-// ─── DRAG LEVEL ON D1 ─────────────────────────────────────
-let dragState = null; // {ticker, canvas, meta, candles, spyNorm, labels}
-
-function attachDrag(canvasId, ticker, meta, candles, spyNorm, labels){
-  const canvas = document.getElementById(canvasId);
-  if(!canvas) return;
-
-  // Remove old listeners by replacing canvas clone
-  const clone = canvas.cloneNode(true);
-  canvas.parentNode.replaceChild(clone, canvas);
-  const c = document.getElementById(canvasId);
-
-  function getLvlY(){
-    const lvl = parseFloat(U[ticker].levelPrice);
-    if(isNaN(lvl)) return null;
-    return meta.PT + meta.pH - (lvl - getLoHi(candles, lvl).lo) / (getLoHi(candles, lvl).hi - getLoHi(candles, lvl).lo) * meta.pH;
-  }
-
-  function isNearLevel(mouseY){
-    const lvl = parseFloat(U[ticker].levelPrice);
-    if(isNaN(lvl) || !lvl) return false;
-    // Use pyInv to find what price corresponds to mouse y, compare
-    const priceAtMouse = meta.pyInv(mouseY);
-    const lvlPrice = lvl;
-    // near = within 8px
-    const canvas = document.getElementById(canvasId);
-    if(!canvas) return false;
-    const W = canvas.clientWidth, H = canvas.clientHeight;
-    const pxPerPrice = meta.pH / Math.abs(getLoHi(candles, lvl).hi - getLoHi(candles, lvl).lo);
-    return Math.abs(mouseY - (meta.PT + meta.pH - (lvlPrice - getLoHi(candles, lvl).lo) / (getLoHi(candles, lvl).hi - getLoHi(candles, lvl).lo) * meta.pH)) < 10;
-  }
-
-  c.addEventListener('mousedown', e=>{
-    const rect = c.getBoundingClientRect();
-    const my = e.clientY - rect.top;
-    const lvl = parseFloat(U[ticker].levelPrice);
-    if(isNaN(lvl)||!lvl) return;
-    // Check proximity to level line (within 10px)
-    const lyPx = meta.PT + meta.pH*(1-(lvl-getRange(candles,lvl).lo)/(getRange(candles,lvl).hi-getRange(candles,lvl).lo));
-    if(Math.abs(my - lyPx) > 12) return;
-    e.preventDefault();
-    dragState = {ticker, canvasId, meta, candles, spyNorm, labels};
-    c.style.cursor = 'ns-resize';
-  });
-
-  c.addEventListener('mousemove', e=>{
-    const rect = c.getBoundingClientRect();
-    const my = e.clientY - rect.top;
-    const lvl = parseFloat(U[ticker].levelPrice);
-
-    if(dragState && dragState.canvasId === canvasId){
-      // Dragging — update level
-      const newPrice = meta.pyInv(my);
-      const rounded  = Math.round(newPrice * 100) / 100;
-      U[ticker].levelPrice = String(rounded);
-      saveState();
-      // Update input field
-      const inp = document.querySelector('.inp[type="number"]');
-      if(inp) inp.value = rounded;
-      // Update ctl
-      const el = document.getElementById('sb-ctl');
-      if(el) el.textContent = closeToLevel(ticker);
-      // Redraw D1 only (fast)
-      drawChart(canvasId, 'cw-d1', candles, rounded, spyNorm, labels);
-      // Redraw H1/M5 level too (debounced)
-      clearTimeout(dragState._redrawT);
-      dragState._redrawT = setTimeout(()=>{
-        redrawAll(ticker);
-      }, 80);
-    } else {
-      // Hover — show resize cursor near line
-      if(!lvl||isNaN(lvl)){c.style.cursor='default';return;}
-      const rng = getRange(candles, lvl);
-      const lyPx = meta.PT + meta.pH*(1-(lvl-rng.lo)/(rng.hi-rng.lo));
-      c.style.cursor = Math.abs(my-lyPx)<12 ? 'ns-resize' : 'default';
-    }
-  });
-
-  c.addEventListener('mouseup', ()=>{
-    if(dragState){ dragState=null; }
-    c.style.cursor='default';
-  });
-
-  c.addEventListener('mouseleave', ()=>{
-    if(dragState){ dragState=null; }
-    c.style.cursor='default';
-  });
-}
-
-// get hi/lo range same way as drawChart does
-function getRange(candles, level){
-  const hs=candles.map(c=>c.h), ls=candles.map(c=>c.l);
-  if(level!=null){hs.push(level);ls.push(level);}
-  let hi=Math.max(...hs), lo=Math.min(...ls);
-  const rng=hi-lo; hi+=rng*0.08; lo-=rng*0.06;
-  return {hi, lo};
 }
 
 // ─── CUSTOM DROPDOWN ──────────────────────────────────────
