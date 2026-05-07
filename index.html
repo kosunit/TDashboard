@@ -40,17 +40,26 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .body{display:flex;flex:1;overflow:hidden}
 
 /* nav */
-.nav{width:185px;flex-shrink:0;border-right:1px solid var(--border);background:var(--bg2);overflow-y:auto}
-.nav::-webkit-scrollbar{width:3px}
-.nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-.ni{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
+.nav{width:185px;flex-shrink:0;border-right:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;overflow:hidden}
+.nav-list{flex:1;overflow-y:auto}
+.nav-list::-webkit-scrollbar{width:3px}
+.nav-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.nav-add{padding:8px 10px;border-top:1px solid var(--border);flex-shrink:0;background:var(--bg2)}
+.nav-add-row{display:flex;gap:5px;align-items:center}
+.nav-add-inp{flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-transform:uppercase;width:0}
+.nav-add-inp::placeholder{color:var(--text3);text-transform:none}
+.nav-add-inp:focus{border-color:var(--blue)}
+.nav-add-btn{background:var(--blue2);border:1px solid var(--blue);color:#fff;font-size:13px;width:26px;height:26px;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1}
+.nav-add-btn:hover{background:#3a7dc4}
+.nav-add-err{font-size:10px;color:var(--red);margin-top:4px;font-family:var(--mono);min-height:14px}
+.ni{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s;gap:4px}
 .ni:hover{background:var(--bg3)}
+.ni:hover .ni-del{opacity:1}
 .ni.on{background:var(--bg3);border-left:2px solid var(--blue);padding-left:10px}
 .ni-t{font-size:13px;font-weight:600;font-family:var(--mono)}
 .ni-s{font-size:9px;color:var(--text2);margin-top:1px}
-.ni-p{font-size:11px;font-family:var(--mono);color:var(--blue)}
-.ni-p.spin{color:var(--text3);animation:blink 1.2s infinite}
-@keyframes blink{0%,100%{opacity:.3}50%{opacity:.9}}
+.ni-del{opacity:0;background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer;padding:0 2px;line-height:1;transition:opacity .15s,color .1s;flex-shrink:0}
+.ni-del:hover{color:var(--red)}
 .cH{color:var(--green)}.cL{color:var(--red)}.cP{color:var(--gold)}.cLim{color:var(--purple)}
 
 /* card */
@@ -68,12 +77,28 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .sb-cp{font-size:18px;font-weight:500;font-family:var(--mono);color:var(--blue)}
 .sb-cl{font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:1px}
 
-.sb-sec{padding:8px 14px;border-bottom:1px solid var(--border)}
-.st{font-size:9px;font-weight:600;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;margin-bottom:5px}
-.sr{display:flex;justify-content:space-between;align-items:center;padding:2px 0;gap:4px}
-.sl{font-size:11px;color:var(--text2);flex-shrink:0}
-.sv{font-size:11px;font-weight:500;font-family:var(--mono);color:var(--text);text-align:right}
-.sv.b{color:var(--blue)}.sv.g{color:var(--gold)}
+.sb-sec{padding:9px 14px;border-bottom:1px solid var(--border)}
+.st{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--text2);text-transform:uppercase;margin-bottom:6px}
+.sr{display:flex;justify-content:space-between;align-items:center;padding:2.5px 0;gap:4px}
+.sl{font-size:12px;color:var(--text2);flex-shrink:0}
+.sv{font-size:13px;font-weight:500;font-family:var(--mono);color:#dde6f0;text-align:right}
+.sv.b{color:#6ab4f5}.sv.g{color:var(--gold)}
+
+/* market phase block */
+.mkt-block{padding:10px 14px;border-bottom:1px solid var(--border)}
+.mkt-phase{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.mkt-icon{font-size:14px}
+.mkt-label{font-size:13px;font-weight:600}
+.mkt-sub{font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.4}
+.mkt-bar{position:relative;height:6px;background:var(--bg3);border-radius:3px;margin-bottom:6px;overflow:visible}
+.mkt-seg{position:absolute;top:0;height:100%;border-radius:3px}
+.mkt-cursor{position:absolute;top:-3px;width:3px;height:12px;background:#fff;border-radius:2px;transform:translateX(-50%)}
+.mkt-ticks{display:flex;justify-content:space-between;font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:6px}
+.mkt-hours{display:flex;flex-direction:column;gap:3px}
+.mkt-row{display:flex;align-items:center;gap:6px;font-size:11px}
+.mkt-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.mkt-rname{color:var(--text2);width:72px}
+.mkt-rtime{color:var(--text);font-family:var(--mono);font-size:10px}
 
 /* editable input */
 .inp{background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-size:11px;font-weight:500;font-family:var(--mono);text-align:right;padding:1px 2px;width:100%;max-width:120px;outline:none;transition:border-color .15s;cursor:text}
@@ -82,15 +107,15 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 select.inp{cursor:pointer;-webkit-appearance:none;background:var(--bg3);padding:2px 4px;border-radius:3px;border:1px solid var(--border2);color:var(--text)}
 select.inp:focus{border-color:var(--blue)}
 
-.sb-ft{padding:10px 14px;display:flex;gap:16px;margin-top:auto;border-top:1px solid var(--border)}
-.ft-i{display:flex;align-items:center;gap:6px}
-.ft-d{width:8px;height:2px;border-radius:1px}
-.ft-l{font-size:14px;font-weight:600;font-family:var(--mono)}
-.ft-p{font-size:14px;font-weight:500;color:var(--text);font-family:var(--mono)}
+.sb-ft{padding:12px 14px;display:flex;gap:20px;margin-top:auto;border-top:1px solid var(--border);flex-wrap:wrap}
+.ft-i{display:flex;align-items:center;gap:7px}
+.ft-d{width:10px;height:3px;border-radius:2px}
+.ft-l{font-size:17px;font-weight:600;font-family:var(--mono)}
+.ft-p{font-size:17px;font-weight:500;color:#dde6f0;font-family:var(--mono)}
 
 /* charts */
 .charts{flex:1;min-width:0;display:flex;flex-direction:column;background:#0d1117}
-.c-d1{flex:1.65;position:relative;border-bottom:1px solid var(--border);overflow:hidden}
+.c-d1{flex:2.2;position:relative;border-bottom:1px solid var(--border);overflow:hidden}
 .c-bot{display:flex;flex:1;overflow:hidden}
 .c-h1,.c-m5{flex:1;position:relative;overflow:hidden}
 .c-h1{border-right:1px solid var(--border)}
@@ -120,7 +145,18 @@ canvas{position:absolute;inset:0;display:block}
   <div class="fbar" id="fbar"></div>
   <div id="dbg"></div>
   <div class="body">
-    <div class="nav" id="nav"></div>
+    <div class="nav">
+      <div class="nav-list" id="nav-list"></div>
+      <div class="nav-add">
+        <div class="nav-add-row">
+          <input class="nav-add-inp" id="nav-inp" placeholder="тикер (AAPL)" maxlength="10"
+            onkeydown="if(event.key==='Enter')addTicker()"
+            oninput="this.value=this.value.toUpperCase();document.getElementById('nav-err').textContent=''">
+          <button class="nav-add-btn" onclick="addTicker()" title="Добавить">+</button>
+        </div>
+        <div class="nav-add-err" id="nav-err"></div>
+      </div>
+    </div>
     <div class="card-area" id="card-area"><div class="no-card">Выберите инструмент</div></div>
   </div>
 </div>
@@ -272,20 +308,44 @@ async function fetchProfile(ticker){
 }
 
 function calcATR(bars, n=5){
-  if(bars.length<2) return 0;
-  const trs=[];
-  for(let i=Math.max(1,bars.length-n-1);i<bars.length;i++)
-    trs.push(Math.max(bars[i].h-bars[i].l, Math.abs(bars[i].h-bars[i-1].c), Math.abs(bars[i].l-bars[i-1].c)));
-  return trs.slice(-n).reduce((a,b)=>a+b,0)/Math.min(n,trs.length)||0;
+  if(bars.length < 2) return 0;
+
+  // Step 1: compute TR for all bars
+  const allTR = [];
+  for(let i=1; i<bars.length; i++){
+    const tr = Math.max(
+      bars[i].h - bars[i].l,
+      Math.abs(bars[i].h - bars[i-1].c),
+      Math.abs(bars[i].l - bars[i-1].c)
+    );
+    allTR.push({tr, i});
+  }
+
+  // Step 2: collect last n clean (non-paranormal) TRs
+  // A bar is paranormal if its TR > 2 * avg TR of previous 20 bars
+  const clean = [];
+  for(let k = allTR.length-1; k >= 0 && clean.length < n; k--){
+    const {tr, i} = allTR[k];
+    // avg TR of up to 20 bars before this one
+    const prev20 = allTR.slice(Math.max(0, k-20), k).map(x=>x.tr);
+    if(prev20.length === 0){ clean.push(tr); continue; }
+    const avgPrev = prev20.reduce((a,b)=>a+b,0) / prev20.length;
+    const isParanormal = tr > 2 * avgPrev;
+    if(!isParanormal) clean.push(tr);
+    // if paranormal — skip and move to previous bar (loop continues)
+  }
+
+  if(clean.length === 0) return 0;
+  return clean.reduce((a,b)=>a+b,0) / clean.length;
 }
 
 async function loadTicker(ticker){
   if(D[ticker]) return D[ticker];
 
   const [d1, m5, spyD1, quote, profile] = await Promise.all([
-    fetchBars(ticker, '1day', 300),
+    fetchBars(ticker, '1day', 60),
     fetchBars(ticker, '5min', 100),
-    fetchBars('SPY',  '1day', 300),
+    fetchBars('SPY',  '1day', 60),
     fetchQuote(ticker),
     fetchProfile(ticker),
   ]);
@@ -317,8 +377,8 @@ function h1BarsNeeded(){
   const halfW = Math.max(200, Math.floor((area.clientWidth-230-56)/2));
   return Math.min(500, Math.ceil(halfW/3));
 }
-async function loadH1(ticker){ return fetchBars(ticker, '1h', h1BarsNeeded()); }
-async function loadSpyH1(){     return fetchBars('SPY',  '1h', h1BarsNeeded()); }
+async function loadH1(ticker){ return fetchBars(ticker, '1h', 33); }
+async function loadSpyH1(){     return fetchBars('SPY',  '1h', 33); }
 
 // ─── CLOSE TO LEVEL calc ──────────────────────────────────
 function closeToLevel(ticker){
@@ -356,15 +416,15 @@ function setFil(f){ activeFil=f; activeIdx=0; buildFbar(); buildNav(); selectIte
 
 // ─── NAV ──────────────────────────────────────────────────
 function buildNav(){
-  document.getElementById('nav').innerHTML = filtered().map(({t},i)=>{
+  document.getElementById('nav-list').innerHTML = filtered().map(({t},i)=>{
     const d=D[t], u=U[t], cls=tClass(u.levelType);
     const priceStr = d ? d.prevClose.toFixed(2) : '…';
-    const loaded   = !!d;
     return `<div class="ni${i===activeIdx?' on':''}" onclick="selectItem(${i})">
-      <div>
+      <div style="flex:1;min-width:0">
         <div class="ni-t c${cls}">${t} <span style="font-weight:400;color:var(--text2)">${priceStr}</span></div>
         <div class="ni-s">${u.levelType}</div>
       </div>
+      <button class="ni-del" onclick="event.stopPropagation();removeTicker('${t}')" title="Удалить">×</button>
     </div>`;
   }).join('');
 }
@@ -374,6 +434,50 @@ function selectItem(i){
   buildNav();
   const item = filtered()[i];
   if(item) showCard(item.t);
+}
+
+// ─── ADD / REMOVE TICKER ──────────────────────────────────
+async function addTicker(){
+  const inp = document.getElementById('nav-inp');
+  const err = document.getElementById('nav-err');
+  const t   = inp.value.trim().toUpperCase();
+  if(!t){ err.textContent='Введите тикер'; return; }
+  if(TICKERS.find(x=>x.t===t)){ err.textContent='Уже добавлен'; return; }
+
+  err.textContent='Загрузка…';
+  inp.disabled = true;
+
+  // Try to load — if no data comes back, reject
+  const data = await loadTicker(t);
+  inp.disabled = false;
+
+  if(!data || (!data.d1?.length && !data.prevClose)){
+    err.textContent='Тикер не найден';
+    delete D[t];
+    return;
+  }
+
+  TICKERS.push({t});
+  U[t] = {levelPrice:'', levelType:'Излом тренда High', criteria:'Возврат к уровню'};
+  inp.value = '';
+  err.textContent = '';
+  activeIdx = filtered().length - 1;
+  buildFbar();
+  buildNav();
+  selectItem(activeIdx);
+}
+
+function removeTicker(t){
+  const idx = TICKERS.findIndex(x=>x.t===t);
+  if(idx === -1) return;
+  TICKERS.splice(idx, 1);
+  delete U[t];
+  if(activeIdx >= filtered().length) activeIdx = Math.max(0, filtered().length-1);
+  buildFbar();
+  buildNav();
+  const cur = filtered()[activeIdx];
+  if(cur) selectItem(activeIdx);
+  else document.getElementById('card-area').innerHTML='<div class="no-card">Выберите инструмент</div>';
 }
 
 // ─── RENDER CARD ──────────────────────────────────────────
@@ -389,7 +493,9 @@ function showCard(ticker){
   const vD1Str    = d ? fmtN(d.avgVolD1)  : '…';
   const vM5Str    = d ? fmtN(d.lastVolM5) : '…';
   const ctlStr    = closeToLevel(ticker);
-  const mktLabel  = d?.isOpen ? 'текущая цена (рынок открыт)' : 'закрытие предыдущего дня';
+  const mktLabel  = d?.isOpen
+    ? 'текущая цена (рынок открыт)'
+    : `закрытие ${d?.prevDate || ''}`;
 
   document.getElementById('card-area').innerHTML = `
   <div class="sb">
@@ -444,6 +550,8 @@ function showCard(ticker){
       <div class="sr"><span class="sl">Ср. объём D1</span><span class="sv" id="sb-v1">${vD1Str}</span></div>
       <div class="sr"><span class="sl">Объём M5</span><span class="sv" id="sb-v5">${vM5Str}</span></div>
     </div>
+
+    ${buildMarketPhaseBlock()}
 
     <div class="sb-ft">
       <div class="ft-i">
@@ -589,10 +697,10 @@ function drawChart(cid, wid, candles, level, spyNorm, labels){
   const compact = H<230;
   const GRID='rgba(255,255,255,0.05)', AX='rgba(210,225,240,0.9)';
   const FSZ = compact?7.5:8.5;
-  const LBH = compact?30:36;      // label area height
+  const LBH = compact?30:36;
   const PL=4,PR=52,PT=compact?12:16,PB=LBH;
-  const VH = compact?14:20;       // volume bar height
-  const cw=W-PL-PR, ch=H-PT-PB, pH=ch-VH-4;
+  const VOL_H_FRAC = 0.18; // volume takes bottom 18% of price area
+  const cw=W-PL-PR, ch=H-PT-PB, pH=ch;  // full height for price
 
   ctx.fillStyle='#141c28'; ctx.fillRect(0,0,W,H);
 
@@ -642,26 +750,34 @@ function drawChart(cid, wid, candles, level, spyNorm, labels){
     ctx.fillText(level.toFixed(2), PL+cw+3, ly+3.5);
   }
 
-  // candles
+  // candles + volume (volume rendered inside chart area, bottom 18%)
   const n=candles.length, sw=cw/n;
   const bw=Math.max(1, sw*0.55);
   const maxV=Math.max(...candles.map(c=>c.v));
+  const volAreaH = pH * VOL_H_FRAC;  // pixels for volume
+  const volBase  = PT + pH;           // bottom of price area
 
   candles.forEach((c,i)=>{
     const x=PL+i*sw+sw/2;
     const col=c.c>=c.o?UP:DN;
+
+    // Volume bar — inside chart, bottom-aligned, lighter color
+    const vh = (c.v/maxV) * volAreaH;
+    ctx.fillStyle = c.c>=c.o ? 'rgba(62,169,110,0.25)' : 'rgba(224,85,85,0.25)';
+    ctx.fillRect(x-bw/2, volBase-vh, bw, vh);
+
+    // Candle wick
     ctx.strokeStyle=col; ctx.lineWidth=Math.max(0.6,sw*0.07); ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(x,py(c.h)); ctx.lineTo(x,py(c.l)); ctx.stroke();
+    // Candle body
     const by=py(Math.max(c.o,c.c)), bh=Math.max(1,Math.abs(py(c.o)-py(c.c)));
     ctx.fillStyle=col; ctx.fillRect(x-bw/2,by,bw,bh);
-    ctx.fillStyle='rgba(255,255,255,0.08)';
-    ctx.fillRect(x-bw/2, PT+pH+4, bw, (c.v/maxV)*VH);
   });
 
   // x-axis labels — vertical (rotated -90°)
   if(labels && labels.length){
     const step = Math.max(1, Math.ceil((compact?9:10)/sw));
-    const yBase = PT+pH+VH+4;
+    const yBase = PT+pH+4;
     ctx.fillStyle=AX;
     ctx.font=`${FSZ}px JetBrains Mono,monospace`;
     ctx.textAlign='right'; ctx.textBaseline='middle';
@@ -699,6 +815,80 @@ function pickType(ticker, val){
   }
   document.getElementById('dd-type').classList.remove('open');
   buildFbar(); buildNav();
+}
+
+// ─── MARKET PHASE BLOCK ───────────────────────────────────
+function buildMarketPhaseBlock(){
+  // All times in ET (America/New_York)
+  const now = new Date();
+  const et  = new Date(now.toLocaleString('en-US', {timeZone:'America/New_York'}));
+  const day = et.getDay(); // 0=Sun,6=Sat
+  const mins = et.getHours()*60 + et.getMinutes();
+  const isWeekday = day>=1 && day<=5;
+
+  // Minutes from midnight ET
+  const PRE_START  = 4*60;    // 04:00
+  const MKT_START  = 9*60+30; // 09:30
+  const MKT_END    = 16*60;   // 16:00
+  const POST_END   = 20*60;   // 20:00
+  const DAY_END    = 24*60;   // 24:00
+
+  let phase, phaseColor, icon, label, sub;
+
+  if(!isWeekday){
+    phase='closed'; phaseColor='#4a5f73'; icon='🔴'; label='Закрыто';
+    sub='Рынок закрыт (выходной)';
+  } else if(mins < PRE_START){
+    phase='closed'; phaseColor='#4a5f73'; icon='🔴'; label='Закрыто';
+    const openIn = PRE_START - mins;
+    sub=`Pre-market открывается через ${Math.floor(openIn/60)}ч ${openIn%60}мин`;
+  } else if(mins < MKT_START){
+    phase='pre'; phaseColor='#d4a017'; icon='🌅'; label='Pre-market';
+    const openIn = MKT_START - mins;
+    sub=`Основная сессия через ${Math.floor(openIn/60)}ч ${openIn%60}мин`;
+  } else if(mins < MKT_END){
+    phase='main'; phaseColor='#3ea96e'; icon='🟢'; label='Основная сессия';
+    const closeIn = MKT_END - mins;
+    sub=`Закрытие через ${Math.floor(closeIn/60)}ч ${closeIn%60}мин`;
+  } else if(mins < POST_END){
+    phase='post'; phaseColor='#8b6be8'; icon='🌆'; label='After-hours';
+    const closeIn = POST_END - mins;
+    sub=`Закрытие через ${Math.floor(closeIn/60)}ч ${closeIn%60}мин`;
+  } else {
+    phase='closed'; phaseColor='#4a5f73'; icon='🔴'; label='Закрыто';
+    sub='Pre-market открывается в 04:00 ET';
+  }
+
+  // Timeline bar: 0–24h range, mark segments
+  const pct = p => (p/DAY_END*100).toFixed(2)+'%';
+  const cursorPct = Math.min(100,(mins/DAY_END*100)).toFixed(2)+'%';
+
+  const timeStr = `${String(et.getHours()).padStart(2,'0')}:${String(et.getMinutes()).padStart(2,'0')}`;
+
+  return `<div class="mkt-block">
+    <div class="mkt-phase">
+      <span class="mkt-icon">${icon}</span>
+      <span class="mkt-label" style="color:${phaseColor}">${label}</span>
+    </div>
+    <div class="mkt-sub">${sub}</div>
+    <div class="mkt-bar">
+      <div class="mkt-seg" style="left:0;width:${pct(PRE_START)};background:#1a2332"></div>
+      <div class="mkt-seg" style="left:${pct(PRE_START)};width:${pct(MKT_START-PRE_START)};background:#d4a01740"></div>
+      <div class="mkt-seg" style="left:${pct(MKT_START)};width:${pct(MKT_END-MKT_START)};background:#3ea96e60"></div>
+      <div class="mkt-seg" style="left:${pct(MKT_END)};width:${pct(POST_END-MKT_END)};background:#8b6be840"></div>
+      <div class="mkt-seg" style="left:${pct(POST_END)};right:0;background:#1a2332"></div>
+      <div class="mkt-cursor" style="left:${cursorPct}" title="${timeStr} ET"></div>
+    </div>
+    <div class="mkt-ticks">
+      <span>00:00</span><span>04:00</span><span>09:30</span><span>16:00</span><span>20:00</span><span>24:00</span>
+    </div>
+    <div class="mkt-hours">
+      <div class="mkt-row"><div class="mkt-dot" style="background:#d4a017"></div><span class="mkt-rname">Pre-market</span><span class="mkt-rtime">04:00 – 09:30</span></div>
+      <div class="mkt-row"><div class="mkt-dot" style="background:#3ea96e"></div><span class="mkt-rname">Main market</span><span class="mkt-rtime">09:30 – 16:00</span></div>
+      <div class="mkt-row"><div class="mkt-dot" style="background:#8b6be8"></div><span class="mkt-rname">After-hours</span><span class="mkt-rtime">16:00 – 20:00</span></div>
+    </div>
+    <div style="font-size:9px;color:var(--text3);margin-top:6px;font-family:var(--mono)">ET (America/New_York) · сейчас ${timeStr}</div>
+  </div>`;
 }
 
 // ─── INIT ─────────────────────────────────────────────────
