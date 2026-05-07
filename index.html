@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Домашка</title>
+<title>Домашка US Stocks</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -101,7 +101,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .mkt-rtime{color:var(--text);font-family:var(--mono);font-size:10px}
 
 /* editable input — same font as .sv */
-.inp{background:transparent;border:none;border-bottom:1px solid transparent;color:#dde6f0;font-size:13px;font-weight:500;font-family:var(--mono);text-align:right;padding:1px 2px;width:100%;max-width:130px;outline:none;transition:border-color .15s;cursor:text}
+.inp{background:transparent;border:none;border-bottom:1px solid transparent;color:#dde6f0;font-size:13px;font-weight:500;font-family:var(--mono);text-align:right;padding:1px 2px;width:100%;max-width:130px;outline:none;transition:border-color .15s;cursor:text;direction:ltr}
 .inp:hover{border-bottom-color:var(--border2)}
 .inp:focus{border-bottom-color:var(--blue);color:var(--blue)}
 
@@ -118,7 +118,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .c-h1,.c-m5{flex:1;position:relative;overflow:hidden}
 .c-h1{border-right:1px solid var(--border)}
 canvas{position:absolute;inset:0;display:block}
-.clbl{position:absolute;top:5px;left:7px;font-size:10px;font-weight:600;font-family:var(--mono);color:var(--text2);z-index:2;pointer-events:none;letter-spacing:.05em}
+.clbl{position:absolute;top:5px;left:7px;font-size:13px;font-weight:600;font-family:var(--mono);color:var(--text2);z-index:2;pointer-events:none;letter-spacing:.05em}
 .cov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(160,175,190,0.4);font-family:var(--mono);z-index:3;background:#141c28}
 /* custom colored dropdown */
 .dd-wrap{position:relative;width:100%;max-width:140px}
@@ -136,7 +136,7 @@ canvas{position:absolute;inset:0;display:block}
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="tb-title">ДОМАШКА</div>
+    <div class="tb-title">ДОМАШКА US STOCKS</div>
     <div class="tb-date" id="tb-date"></div>
     <div class="tb-count" id="tb-count"></div>
   </div>
@@ -162,21 +162,45 @@ canvas{position:absolute;inset:0;display:block}
 // ─── CONSTANTS ────────────────────────────────────────────
 const UP = '#3ea96e', DN = '#e05555', LVL_C = '#4a8fd4';
 
-const TICKERS = [
-  {t:'ARWR'},
-  {t:'BC'},
-  {t:'BLD'},
-];
+const DEFAULT_TICKERS = ['ARWR','BC','BLD'];
 
 const LVL_TYPES = ['Излом тренда High','Излом тренда Low','Парабар High','Парабар Low','Лимитник High','Лимитник Low'];
 const CRITERIA  = ['Возврат к уровню','Возврат к уровню парабара','Поджатие и ЛП последним баром','Без поджатия'];
 
-// Per-ticker state: user-editable
+// ─── PERSIST: save/load tickers + user fields ─────────────
+function saveState(){
+  try{
+    localStorage.setItem('app_tickers', JSON.stringify(TICKERS.map(x=>x.t)));
+    localStorage.setItem('app_u', JSON.stringify(U));
+  }catch(e){}
+}
+
+function loadState(){
+  try{
+    const savedT = JSON.parse(localStorage.getItem('app_tickers') || 'null');
+    const savedU = JSON.parse(localStorage.getItem('app_u')       || 'null');
+    const tList  = (savedT && savedT.length) ? savedT : DEFAULT_TICKERS;
+    tList.forEach(t => {
+      if(!TICKERS.find(x=>x.t===t)) TICKERS.push({t});
+      U[t] = (savedU && savedU[t])
+        ? savedU[t]
+        : {levelPrice:'', levelType:'Излом тренда High', criteria:'Возврат к уровню'};
+    });
+  }catch(e){
+    DEFAULT_TICKERS.forEach(t => {
+      TICKERS.push({t});
+      U[t] = {levelPrice:'', levelType:'Излом тренда High', criteria:'Возврат к уровню'};
+    });
+  }
+}
+
+// mutable — populated by loadState()
+const TICKERS = [];
 const U = {};
-TICKERS.forEach(({t}) => U[t] = {levelPrice:'', levelType:'Излом тренда High', criteria:'Возврат к уровню'});
+loadState();
 
 // Per-ticker API results
-const D = {}; // {curPrice, prevDate, atrD1, atrM5, avgVolD1, lastVolM5, d1[], m5[], spyD1[]}
+const D = {};
 
 let activeFil = 'Все', activeIdx = 0;
 
@@ -383,7 +407,8 @@ function closeToLevel(ticker){
   if(!d||!u.levelPrice||!d.atrD1) return '—';
   const lp=parseFloat(u.levelPrice);
   if(isNaN(lp)) return '—';
-  return ((Math.abs(d.curPrice-lp)/d.atrD1)*100).toFixed(1)+'%';
+  const pct = ((Math.abs(d.curPrice-lp)/d.atrD1)*100).toFixed(1);
+  return `${pct}% ATR`;
 }
 
 // ─── SPY normalise ────────────────────────────────────────
@@ -458,6 +483,7 @@ async function addTicker(){
   U[t] = {levelPrice:'', levelType:'Излом тренда High', criteria:'Возврат к уровню'};
   inp.value = '';
   err.textContent = '';
+  saveState();
   activeIdx = filtered().length - 1;
   buildFbar();
   buildNav();
@@ -469,6 +495,7 @@ function removeTicker(t){
   if(idx === -1) return;
   TICKERS.splice(idx, 1);
   delete U[t];
+  saveState();
   if(activeIdx >= filtered().length) activeIdx = Math.max(0, filtered().length-1);
   buildFbar();
   buildNav();
@@ -501,7 +528,6 @@ function showCard(ticker){
         <span class="sb-tk">${ticker}</span>
         <span class="sb-cp" id="sb-cp">${curStr}</span>
       </div>
-      <div class="sb-cl">${mktLabel}</div>
     </div>
 
     <div class="sb-sec">
@@ -672,13 +698,13 @@ function patchSidebar(ticker){
 // ─── EDITABLE HANDLERS ────────────────────────────────────
 function onLvl(ticker, val){
   U[ticker].levelPrice = val;
+  saveState();
   const el = document.getElementById('sb-ctl');
   if(el) el.textContent = closeToLevel(ticker);
-  // Redraw all charts with new level line
   redrawAll(ticker);
 }
-function onType(ticker, val){ U[ticker].levelType = val; buildFbar(); buildNav(); }
-function onCrit(ticker, val){ U[ticker].criteria = val; }
+function onType(ticker, val){ U[ticker].levelType = val; saveState(); buildFbar(); buildNav(); }
+function onCrit(ticker, val){ U[ticker].criteria = val; saveState(); }
 
 async function redrawAll(ticker){
   const d = D[ticker]; if(!d) return;
@@ -700,10 +726,10 @@ function drawChart(cid, wid, candles, level, spyNorm, labels){
   ctx.scale(DPR,DPR);
 
   const compact = H<230;
-  const GRID='rgba(255,255,255,0.05)', AX='rgba(210,225,240,0.9)';
+  const GRID='rgba(255,255,255,0.09)', AX='rgba(210,225,240,0.9)';
   const FSZ = compact?9:11;
   const LBH = compact?30:36;
-  const PL=4,PR=58,PT=compact?12:16,PB=LBH;
+  const PL=4,PR=60,PT=compact?12:16,PB=LBH;
   const VOL_H_FRAC = 0.18;
   const cw=W-PL-PR, ch=H-PT-PB, pH=ch;
 
@@ -716,16 +742,32 @@ function drawChart(cid, wid, candles, level, spyNorm, labels){
   const rng=hi-lo; hi+=rng*0.08; lo-=rng*0.06;
   const py=v=>PT+pH-(v-lo)/(hi-lo)*pH;
 
-  // grid + price axis
-  const ticks=compact?3:5;
-  ctx.strokeStyle=GRID; ctx.lineWidth=0.5; ctx.setLineDash([]);
-  for(let i=0;i<=ticks;i++){
-    const v=lo+(hi-lo)*i/ticks, y=py(v);
+  // Choose a nice tick step so labels don't overlap
+  // Target ~8-12 ticks for D1, fewer for compact
+  const targetTicks = compact ? 5 : 10;
+  const rawStep = (hi-lo) / targetTicks;
+  // Round step to nearest nice value: 0.10, 0.20, 0.50, 1, 2, 5, 10...
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const niceSteps = [0.1,0.2,0.25,0.5,1,2,2.5,5,10,20,25,50,100];
+  const normalised = rawStep / magnitude;
+  const niceMult = niceSteps.find(s => s >= normalised) || niceSteps[niceSteps.length-1];
+  const step = niceMult * magnitude;
+
+  // Start from a round multiple of step
+  const firstTick = Math.ceil(lo / step) * step;
+
+  ctx.font=`${FSZ}px JetBrains Mono,monospace`;
+  ctx.textAlign='left';
+
+  for(let v = firstTick; v <= hi; v += step){
+    const y = py(v);
+    if(y < PT || y > PT+pH) continue;
+    ctx.strokeStyle=GRID; ctx.lineWidth=0.5; ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(PL,y); ctx.lineTo(PL+cw,y); ctx.stroke();
     ctx.fillStyle=AX;
-    ctx.font=`${FSZ}px JetBrains Mono,monospace`;
-    ctx.textAlign='left';
-    ctx.fillText(v.toFixed(2), PL+cw+3, y+3);
+    ctx.fillText(v.toFixed(2), PL+cw+3, y+3.5);
+    // fix floating point drift
+    v = Math.round(v * 10000) / 10000;
   }
 
   // SPY line (grey, behind candles)
@@ -812,7 +854,7 @@ document.addEventListener('click',e=>{
 
 function pickType(ticker, val){
   U[ticker].levelType = val;
-  // update displayed value + color
+  saveState();
   const valEl=document.getElementById('dd-type-val');
   if(valEl){
     valEl.textContent=val;
@@ -824,6 +866,7 @@ function pickType(ticker, val){
 
 function pickCrit(ticker, val){
   U[ticker].criteria = val;
+  saveState();
   const valEl=document.getElementById("dd-crit-val");
   if(valEl) valEl.textContent = val;
   document.getElementById("dd-crit").classList.remove("open");
