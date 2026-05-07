@@ -100,12 +100,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .mkt-rname{color:var(--text2);width:72px}
 .mkt-rtime{color:var(--text);font-family:var(--mono);font-size:10px}
 
-/* editable input */
-.inp{background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-size:11px;font-weight:500;font-family:var(--mono);text-align:right;padding:1px 2px;width:100%;max-width:120px;outline:none;transition:border-color .15s;cursor:text}
+/* editable input — same font as .sv */
+.inp{background:transparent;border:none;border-bottom:1px solid transparent;color:#dde6f0;font-size:13px;font-weight:500;font-family:var(--mono);text-align:right;padding:1px 2px;width:100%;max-width:130px;outline:none;transition:border-color .15s;cursor:text}
 .inp:hover{border-bottom-color:var(--border2)}
 .inp:focus{border-bottom-color:var(--blue);color:var(--blue)}
-select.inp{cursor:pointer;-webkit-appearance:none;background:var(--bg3);padding:2px 4px;border-radius:3px;border:1px solid var(--border2);color:var(--text)}
-select.inp:focus{border-color:var(--blue)}
 
 .sb-ft{padding:12px 14px;display:flex;gap:20px;margin-top:auto;border-top:1px solid var(--border);flex-wrap:wrap}
 .ft-i{display:flex;align-items:center;gap:7px}
@@ -143,7 +141,6 @@ canvas{position:absolute;inset:0;display:block}
     <div class="tb-count" id="tb-count"></div>
   </div>
   <div class="fbar" id="fbar"></div>
-  <div id="dbg"></div>
   <div class="body">
     <div class="nav">
       <div class="nav-list" id="nav-list"></div>
@@ -343,9 +340,9 @@ async function loadTicker(ticker){
   if(D[ticker]) return D[ticker];
 
   const [d1, m5, spyD1, quote, profile] = await Promise.all([
-    fetchBars(ticker, '1day', 60),
+    fetchBars(ticker, '1day', 70),
     fetchBars(ticker, '5min', 100),
-    fetchBars('SPY',  '1day', 60),
+    fetchBars('SPY',  '1day', 70),
     fetchQuote(ticker),
     fetchProfile(ticker),
   ]);
@@ -530,9 +527,15 @@ function showCard(ticker){
       </div>
       <div class="sr">
         <span class="sl">Критерии</span>
-        <select class="inp" onchange="onCrit('${ticker}',this.value)">
-          ${CRITERIA.map(c=>`<option${c===u.criteria?' selected':''}>${c}</option>`).join('')}
-        </select>
+        <div class="dd-wrap" id="dd-crit">
+          <div class="dd-sel" onclick="toggleDD('dd-crit')">
+            <span class="dd-val" id="dd-crit-val" style="color:#dde6f0">${u.criteria}</span>
+            <span class="dd-arr">▾</span>
+          </div>
+          <div class="dd-list">
+            ${CRITERIA.map(c=>`<div class="dd-opt" style="color:#dde6f0" onclick="pickCrit('${ticker}','${c}')">${c}</div>`).join('')}
+          </div>
+        </div>
       </div>
       <div class="sr"><span class="sl">Закр. до уровня</span><span class="sv g" id="sb-ctl">${ctlStr}</span></div>
     </div>
@@ -540,7 +543,7 @@ function showCard(ticker){
     <div class="sb-sec">
       <div class="st">Инструмент</div>
       <div class="sr"><span class="sl">Сектор</span><span class="sv" id="sb-sector">${d ? d.sector : '…'}</span></div>
-      <div class="sr"><span class="sl">Индустрия</span><span class="sv" style="font-size:10px" id="sb-industry">${d ? d.industry : '…'}</span></div>
+      <div class="sr"><span class="sl">Индустрия</span><span class="sv" id="sb-industry">${d ? d.industry : '…'}</span></div>
     </div>
 
     <div class="sb-sec">
@@ -550,6 +553,8 @@ function showCard(ticker){
       <div class="sr"><span class="sl">Ср. объём D1</span><span class="sv" id="sb-v1">${vD1Str}</span></div>
       <div class="sr"><span class="sl">Объём M5</span><span class="sv" id="sb-v5">${vM5Str}</span></div>
     </div>
+
+    <div style="flex:1"></div>
 
     ${buildMarketPhaseBlock()}
 
@@ -696,11 +701,11 @@ function drawChart(cid, wid, candles, level, spyNorm, labels){
 
   const compact = H<230;
   const GRID='rgba(255,255,255,0.05)', AX='rgba(210,225,240,0.9)';
-  const FSZ = compact?7.5:8.5;
+  const FSZ = compact?9:11;
   const LBH = compact?30:36;
-  const PL=4,PR=52,PT=compact?12:16,PB=LBH;
-  const VOL_H_FRAC = 0.18; // volume takes bottom 18% of price area
-  const cw=W-PL-PR, ch=H-PT-PB, pH=ch;  // full height for price
+  const PL=4,PR=58,PT=compact?12:16,PB=LBH;
+  const VOL_H_FRAC = 0.18;
+  const cw=W-PL-PR, ch=H-PT-PB, pH=ch;
 
   ctx.fillStyle='#141c28'; ctx.fillRect(0,0,W,H);
 
@@ -815,6 +820,13 @@ function pickType(ticker, val){
   }
   document.getElementById('dd-type').classList.remove('open');
   buildFbar(); buildNav();
+}
+
+function pickCrit(ticker, val){
+  U[ticker].criteria = val;
+  const valEl=document.getElementById("dd-crit-val");
+  if(valEl) valEl.textContent = val;
+  document.getElementById("dd-crit").classList.remove("open");
 }
 
 // ─── MARKET PHASE BLOCK ───────────────────────────────────
