@@ -188,169 +188,145 @@ function dbgHide(){ setTimeout(()=>document.getElementById('dbg').style.display=
 function clrOv(id){ const e=document.getElementById(id); if(e) e.style.display='none'; }
 function setOv(id,m){ const e=document.getElementById(id); if(e){ e.textContent=m; e.style.display='flex'; } }
 
-// ─── API: TWELVE DATA ─────────────────────────────────────
+// ─── API: TWELVE DATA (direct) ───────────────────────────
 const TD_KEY  = '503b2dad156042a2a5802d9f0ea89c5c';
 const TD_BASE = 'https://api.twelvedata.com';
-const cache   = {}; // memory cache (session)
-const CACHE_TTL_D1  = 60 * 60 * 1000;       // 1 hour for daily bars
-const CACHE_TTL_H1  = 15 * 60 * 1000;       // 15 min for hourly
-const CACHE_TTL_M5  = 5  * 60 * 1000;       // 5 min for M5
-const CACHE_TTL_PX  = 3  * 60 * 1000;       // 3 min for live price
+const cache   = {};
 
-function lsGet(key){
+const CACHE_TTL = {
+  price:   60  * 1000,           // 1 min
+  bars1d:  60  * 60  * 1000,    // 1 hour
+  bars1h:  15  * 60  * 1000,    // 15 min
+  bars5m:  5   * 60  * 1000,    // 5 min
+  profile: 24  * 60  * 60 * 1000 // 24 hours
+};
+
+// localStorage cache with TTL
+function lsGet(key){ try{ const r=localStorage.getItem('td_'+key); if(!r)return null; return JSON.parse(r); }catch(e){ return null; } }
+function lsSet(key, data, ttl){ try{ localStorage.setItem('td_'+key, JSON.stringify({ts:Date.now()+ttl, data})); }catch(e){} }
+function lsValid(key){ const r=lsGet(key); return r&&Date.now()<r.ts?r.data:null; }
+
+async function tdFetch(endpoint, params){
+  const qs = Object.entries({...params, apikey: TD_KEY}).map(([k,v])=>`${k}=${v}`).join('&');
+  const url = `${TD_BASE}/${endpoint}?${qs}`;
   try{
-    const raw = localStorage.getItem('td_'+key);
-    if(!raw) return null;
-    const {ts, data} = JSON.parse(raw);
-    return {ts, data};
-  }catch(e){ return null; }
-}
-function lsSet(key, data, ttl){
-  try{ localStorage.setItem('td_'+key, JSON.stringify({ts:Date.now()+ttl, data})); }catch(e){}
-}
-function lsValid(key){
-  const r=lsGet(key);
-  return r && Date.now()<r.ts ? r.data : null;
-}
-
-// Twelve Data time_series → [{o,h,l,c,v,t}] sorted oldest→newest
-async function fetchTD(ticker, interval, outputsize){
-  const key = `${ticker}|${interval}|${outputsize}`;
-  if(cache[key]) return cache[key];
-  // check localStorage
-  const ttl = interval==='1day'?CACHE_TTL_D1 : interval==='1h'?CACHE_TTL_H1 : CACHE_TTL_M5;
-  const stored = lsValid(key);
-  if(stored){ cache[key]=stored; return stored; }
-
-  const url = `${TD_BASE}/time_series?symbol=${ticker}&interval=${interval}&outputsize=${outputsize}&apikey=${TD_KEY}`;
-  try {
     const r = await fetch(url);
     const j = await r.json();
-    if(j.status === 'error' || j.code){
-      dbg(`TD error [${ticker} ${interval}]: ${j.message}`); return [];
-    }
-    const values = j.values || [];
-    // TD returns newest-first → reverse to oldest-first
-    const bars = values.slice().reverse().map(v => ({
-      o: parseFloat(v.open),
-      h: parseFloat(v.high),
-      l: parseFloat(v.low),
-      c: parseFloat(v.close),
-      v: parseFloat(v.volume||0),
-      t: new Date(v.datetime).getTime()
-    }));
-    cache[key] = bars;
-    lsSet(key, bars, ttl);
-    return bars;
-  } catch(e){ dbg(`fetch ${ticker} ${interval}: ${e.message}`); return []; }
+    if(j.status==='error'||j.code){ dbg(`TD [${endpoint}]: ${j.message}`); return null; }
+    return j;
+  }catch(e){ dbg(`fetch error [${endpoint}]: ${e.message}`); return null; }
 }
 
-// Current price (real-time or delayed)
-async function fetchPrice(ticker){
-  const key = `price|${ticker}`;
+// Candle bars — returns [{t,o,h,l,c,v}] oldest→newest
+async function fetchBars(ticker, interval, outputsize){
+  const ttl = interval==='1day'?CACHE_TTL.bars1d : interval==='1h'?CACHE_TTL.bars1h : CACHE_TTL.bars5m;
+  const key  = `bars|${ticker}|${interval}|${outputsize}`;
   if(cache[key]) return cache[key];
   const stored = lsValid(key);
   if(stored){ cache[key]=stored; return stored; }
-  try {
-    const r = await fetch(`${TD_BASE}/price?symbol=${ticker}&apikey=${TD_KEY}`);
-    const j = await r.json();
-    if(j.price){
-      const p = parseFloat(j.price);
-      cache[key] = p;
-      lsSet(key, p, CACHE_TTL_PX);
-      return p;
-    }
-  } catch(e){}
-  return null;
+
+  const j = await tdFetch('time_series', {symbol:ticker, interval, outputsize});
+  if(!j?.values) return [];
+  const bars = j.values.slice().reverse().map(v=>({
+    t: new Date(v.datetime).getTime(),
+    o: parseFloat(v.open),  h: parseFloat(v.high),
+    l: parseFloat(v.low),   c: parseFloat(v.close),
+    v: parseFloat(v.volume||0)
+  }));
+  cache[key]=bars; lsSet(key, bars, ttl);
+  return bars;
 }
 
-// Fetch sector + industry from TD profile endpoint
+// Quote — gives current price + is_market_open + previous_close
+async function fetchQuote(ticker){
+  const key = `quote|${ticker}`;
+  if(cache[key]) return cache[key];
+  const stored = lsValid(key);
+  if(stored){ cache[key]=stored; return stored; }
+
+  const j = await tdFetch('quote', {symbol:ticker});
+  if(!j) return null;
+  const result = {
+    price:         parseFloat(j.close || 0),
+    previousClose: parseFloat(j.previous_close || 0),
+    isOpen:        j.is_market_open === true || j.is_market_open === 'true',
+    change:        parseFloat(j.change || 0),
+    changePct:     parseFloat(j.percent_change || 0),
+  };
+  cache[key]=result; lsSet(key, result, CACHE_TTL.price);
+  return result;
+}
+
+// Profile — sector, industry, name
 async function fetchProfile(ticker){
   const key = `profile|${ticker}`;
   if(cache[key]) return cache[key];
   const stored = lsValid(key);
   if(stored){ cache[key]=stored; return stored; }
-  try {
-    const r = await fetch(`${TD_BASE}/profile?symbol=${ticker}&apikey=${TD_KEY}`);
-    const j = await r.json();
-    if(j.status==='error'||j.code) return {sector:'—',industry:'—'};
-    const result = {
-      sector:   j.sector   || '—',
-      industry: j.industry || '—',
-    };
-    cache[key] = result;
-    lsSet(key, result, 24*60*60*1000); // cache 24h — rarely changes
-    return result;
-  } catch(e){ return {sector:'—',industry:'—'}; }
+
+  const j = await tdFetch('profile', {symbol:ticker});
+  if(!j) return {sector:'—', industry:'—', name:ticker};
+  const result = {sector: j.sector||'—', industry: j.industry||'—', name: j.name||ticker};
+  cache[key]=result; lsSet(key, result, CACHE_TTL.profile);
+  return result;
 }
 
 function calcATR(bars, n=5){
-  if(bars.length < 2) return 0;
+  if(bars.length<2) return 0;
   const trs=[];
-  for(let i=Math.max(1,bars.length-n-1); i<bars.length; i++)
+  for(let i=Math.max(1,bars.length-n-1);i<bars.length;i++)
     trs.push(Math.max(bars[i].h-bars[i].l, Math.abs(bars[i].h-bars[i-1].c), Math.abs(bars[i].l-bars[i-1].c)));
-  return trs.slice(-n).reduce((a,b)=>a+b,0) / Math.min(n,trs.length) || 0;
+  return trs.slice(-n).reduce((a,b)=>a+b,0)/Math.min(n,trs.length)||0;
 }
 
 async function loadTicker(ticker){
   if(D[ticker]) return D[ticker];
 
-  // Fetch D1 (300 bars), M5 (100 bars), SPY D1, real-time price, profile — in parallel
-  const [d1, m5, spyD1, livePrice, profile] = await Promise.all([
-    fetchTD(ticker, '1day',  300),
-    fetchTD(ticker, '5min',  100),
-    fetchTD('SPY',  '1day',  300),
-    fetchPrice(ticker),
+  const [d1, m5, spyD1, quote, profile] = await Promise.all([
+    fetchBars(ticker, '1day', 300),
+    fetchBars(ticker, '5min', 100),
+    fetchBars('SPY',  '1day', 300),
+    fetchQuote(ticker),
     fetchProfile(ticker),
   ]);
 
   const atrD1 = calcATR(d1, 5);
   const atrM5 = calcATR(m5, 5);
 
-  // prevBar = second-to-last D1 bar (previous completed day)
-  const prevBar   = d1.length >= 2 ? d1[d1.length-2] : d1[0] || null;
-  const prevClose = prevBar ? prevBar.c : 0;
-  const prevDate  = prevBar ? fmtDateFull(prevBar.t) : '';
+  const lastBar   = d1.length ? d1[d1.length-1] : null;
+  const prevDate  = lastBar ? fmtDateFull(lastBar.t) : '';
 
-  // Current price: live if market open, else prev day close
-  const curPrice = (isOpen() && livePrice) ? livePrice : prevClose;
+  // TD quote: is_market_open tells us exactly if market is open right now
+  const isOpen    = quote?.isOpen || false;
+  const prevClose = quote?.previousClose || (lastBar?.c || 0);
+  const curPrice  = isOpen ? (quote?.price || prevClose) : prevClose;
 
   const avgVolD1  = d1.length ? Math.round(d1.slice(-20).reduce((a,b)=>a+b.v,0)/Math.min(20,d1.length)) : 0;
   const lastVolM5 = m5.length ? Math.round(m5[m5.length-1].v) : 0;
 
-  D[ticker] = {curPrice, prevClose, prevDate, atrD1, atrM5, avgVolD1, lastVolM5, d1, m5, spyD1,
-               sector: profile.sector, industry: profile.industry};
+  D[ticker] = {curPrice, prevClose, prevDate, atrD1, atrM5, avgVolD1, lastVolM5,
+               d1, m5, spyD1, isOpen,
+               sector:profile.sector, industry:profile.industry, name:profile.name};
   return D[ticker];
 }
 
-// ─── H1: fetch enough bars to fill chart width ────────────
+// ─── H1 ───────────────────────────────────────────────────
 function h1BarsNeeded(){
   const area = document.getElementById('card-area');
   if(!area) return 100;
-  const halfW = Math.max(200, Math.floor((area.clientWidth - 230 - 56) / 2));
-  return Math.min(500, Math.ceil(halfW / 3)); // min 3px per candle, max 500 (TD limit)
+  const halfW = Math.max(200, Math.floor((area.clientWidth-230-56)/2));
+  return Math.min(500, Math.ceil(halfW/3));
 }
-
-async function loadH1(ticker){
-  const n = h1BarsNeeded();
-  const key = `${ticker}|1h|${n}`;
-  if(cache[key]) return cache[key];
-  return fetchTD(ticker, '1h', n);
-}
-async function loadSpyH1(){
-  const n = h1BarsNeeded();
-  const key = `SPY|1h|${n}`;
-  if(cache[key]) return cache[key];
-  return fetchTD('SPY', '1h', n);
-}
+async function loadH1(ticker){ return fetchBars(ticker, '1h', h1BarsNeeded()); }
+async function loadSpyH1(){     return fetchBars('SPY',  '1h', h1BarsNeeded()); }
 
 // ─── CLOSE TO LEVEL calc ──────────────────────────────────
 function closeToLevel(ticker){
-  const d = D[ticker], u = U[ticker];
-  if(!d || !u.levelPrice || !d.atrD1) return '—';
-  const lp = parseFloat(u.levelPrice);
+  const d=D[ticker], u=U[ticker];
+  if(!d||!u.levelPrice||!d.atrD1) return '—';
+  const lp=parseFloat(u.levelPrice);
   if(isNaN(lp)) return '—';
-  return ((Math.abs(d.curPrice - lp) / d.atrD1) * 100).toFixed(1) + '%';
+  return ((Math.abs(d.curPrice-lp)/d.atrD1)*100).toFixed(1)+'%';
 }
 
 // ─── SPY normalise ────────────────────────────────────────
@@ -413,7 +389,7 @@ function showCard(ticker){
   const vD1Str    = d ? fmtN(d.avgVolD1)  : '…';
   const vM5Str    = d ? fmtN(d.lastVolM5) : '…';
   const ctlStr    = closeToLevel(ticker);
-  const mktLabel  = isOpen() ? 'текущая (рынок открыт)' : 'закрытие предыдущего дня';
+  const mktLabel  = d?.isOpen ? 'текущая цена (рынок открыт)' : 'закрытие предыдущего дня';
 
   document.getElementById('card-area').innerHTML = `
   <div class="sb">
