@@ -184,7 +184,7 @@ function loadState(){
       if(!TICKERS.find(x=>x.t===t)) TICKERS.push({t});
       U[t] = (savedU && savedU[t])
         ? savedU[t]
-        : {levelPrice:'', levelType:'Излом тренда High', criteria:'Возврат к уровню'};
+        : {levelPrice:'', levelType:'Излом тренда High', criteria:'Возврат к уровню', barsToLevel:'', lpCount:'', closedBeyond:''};
     });
   }catch(e){
     DEFAULT_TICKERS.forEach(t => {
@@ -364,9 +364,9 @@ async function loadTicker(ticker){
   if(D[ticker]) return D[ticker];
 
   const [d1, m5, spyD1, quote, profile] = await Promise.all([
-    fetchBars(ticker, '1day', 70),
+    fetchBars(ticker, '1day', 80),
     fetchBars(ticker, '5min', 100),
-    fetchBars('SPY',  '1day', 70),
+    fetchBars('SPY',  '1day', 80),
     fetchQuote(ticker),
     fetchProfile(ticker),
   ]);
@@ -480,7 +480,7 @@ async function addTicker(){
   }
 
   TICKERS.push({t});
-  U[t] = {levelPrice:'', levelType:'Излом тренда High', criteria:'Возврат к уровню'};
+  U[t] = {levelPrice:'', levelType:'Излом тренда High', criteria:'Возврат к уровню', barsToLevel:'', lpCount:'', closedBeyond:''};
   inp.value = '';
   err.textContent = '';
   saveState();
@@ -564,6 +564,28 @@ function showCard(ticker){
         </div>
       </div>
       <div class="sr"><span class="sl">Закр. до уровня</span><span class="sv g" id="sb-ctl">${ctlStr}</span></div>
+    </div>
+
+    <div class="sb-sec">
+      <div class="st">Спецификация</div>
+      <div class="sr">
+        <span class="sl">Баров до БСУ</span>
+        <input class="inp" type="number" min="0" step="1" placeholder="0"
+          value="${u.barsToLevel||''}"
+          oninput="onSpec('${ticker}','barsToLevel',this.value)">
+      </div>
+      <div class="sr">
+        <span class="sl">Количество ЛП</span>
+        <input class="inp" type="number" min="0" step="1" placeholder="0"
+          value="${u.lpCount||''}"
+          oninput="onSpec('${ticker}','lpCount',this.value)">
+      </div>
+      <div class="sr">
+        <span class="sl">Закрытий за уровнем</span>
+        <input class="inp" type="number" min="0" step="1" placeholder="0"
+          value="${u.closedBeyond||''}"
+          oninput="onSpec('${ticker}','closedBeyond',this.value)">
+      </div>
     </div>
 
     <div class="sb-sec">
@@ -703,6 +725,10 @@ function onLvl(ticker, val){
   const el = document.getElementById('sb-ctl');
   if(el) el.textContent = closeToLevel(ticker);
   redrawAll(ticker);
+}
+function onSpec(ticker, field, val){
+  U[ticker][field] = val;
+  saveState();
 }
 function onType(ticker, val){ U[ticker].levelType = val; saveState(); buildFbar(); buildNav(); }
 function onCrit(ticker, val){ U[ticker].criteria = val; saveState(); }
@@ -937,11 +963,6 @@ function buildMarketPhaseBlock(){
     </div>
     <div class="mkt-ticks">
       <span>00:00</span><span>04:00</span><span>09:30</span><span>16:00</span><span>20:00</span><span>24:00</span>
-    </div>
-    <div class="mkt-hours">
-      <div class="mkt-row"><div class="mkt-dot" style="background:#d4a017"></div><span class="mkt-rname">Pre-market</span><span class="mkt-rtime">04:00 – 09:30</span></div>
-      <div class="mkt-row"><div class="mkt-dot" style="background:#3ea96e"></div><span class="mkt-rname">Main market</span><span class="mkt-rtime">09:30 – 16:00</span></div>
-      <div class="mkt-row"><div class="mkt-dot" style="background:#8b6be8"></div><span class="mkt-rname">After-hours</span><span class="mkt-rtime">16:00 – 20:00</span></div>
     </div>
     <div style="font-size:9px;color:var(--text3);margin-top:6px;font-family:var(--mono)">ET (America/New_York) · сейчас ${timeStr}</div>
   </div>`;
