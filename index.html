@@ -104,6 +104,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .inp{background:transparent;border:none;border-bottom:1px solid transparent;color:#dde6f0;font-size:13px;font-weight:500;font-family:var(--mono);text-align:right;padding:1px 2px;width:100%;max-width:130px;outline:none;transition:border-color .15s;cursor:text;direction:ltr}
 .inp:hover{border-bottom-color:var(--border2)}
 .inp:focus{border-bottom-color:var(--blue);color:var(--blue)}
+.spec-inp{cursor:default;color:var(--gold)!important;border-bottom-color:transparent!important}
 
 .sb-ft{padding:12px 14px;display:flex;gap:20px;margin-top:auto;border-top:1px solid var(--border);flex-wrap:wrap}
 .ft-i{display:flex;align-items:center;gap:7px}
@@ -117,7 +118,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .c-bot{display:flex;flex:1;overflow:hidden}
 .c-h1,.c-m5{flex:1;position:relative;overflow:hidden}
 .c-h1{border-right:1px solid var(--border)}
-canvas{position:absolute;inset:0;display:block;cursor:default}
+.c-d1 canvas{cursor:crosshair}
 .clbl{position:absolute;top:5px;left:7px;font-size:13px;font-weight:600;font-family:var(--mono);color:var(--text2);z-index:2;pointer-events:none;letter-spacing:.05em}
 .cov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(160,175,190,0.4);font-family:var(--mono);z-index:3;background:#141c28}
 /* custom colored dropdown */
@@ -570,21 +571,18 @@ function showCard(ticker){
       <div class="st">Спецификация</div>
       <div class="sr">
         <span class="sl">Баров до БСУ</span>
-        <input class="inp" type="number" min="0" step="1" placeholder="0"
-          value="${u.barsToLevel||''}"
-          oninput="onSpec('${ticker}','barsToLevel',this.value)">
+        <input class="inp spec-inp" type="text" readonly placeholder="кликните бар на D1"
+          value="${u.barsToLevel||''}">
       </div>
       <div class="sr">
         <span class="sl">Количество ЛП</span>
-        <input class="inp" type="number" min="0" step="1" placeholder="0"
-          value="${u.lpCount||''}"
-          oninput="onSpec('${ticker}','lpCount',this.value)">
+        <input class="inp spec-inp" type="text" readonly placeholder="—"
+          value="${u.lpCount||''}">
       </div>
       <div class="sr">
         <span class="sl">Закрытий за уровнем</span>
-        <input class="inp" type="number" min="0" step="1" placeholder="0"
-          value="${u.closedBeyond||''}"
-          oninput="onSpec('${ticker}','closedBeyond',this.value)">
+        <input class="inp spec-inp" type="text" readonly placeholder="—"
+          value="${u.closedBeyond||''}">
       </div>
     </div>
 
@@ -671,29 +669,35 @@ async function loadAndRender(ticker){
 }
 
 function renderCharts(ticker, h1Bars, spyH1){
-  const d = D[ticker];
-  const lvl = parseFloat(U[ticker].levelPrice) || null;
+  const d   = D[ticker];
+  const u   = U[ticker];
+  const lvl = parseFloat(u.levelPrice) || null;
+  const bsuTs = u.bsuTimestamp || null;
 
   // D1
   if(d && d.d1 && d.d1.length){
     const labels = d.d1.map(b=>tsToStr(b.t,'d'));
-    drawChart('c-d1','cw-d1', d.d1, lvl, normSpy(d.spyD1, d.d1), labels);
+    drawChart('c-d1','cw-d1', d.d1, lvl, normSpy(d.spyD1, d.d1), labels, bsuTs);
     clrOv('ov-d1');
+    attachBsuClick(ticker);
+    calcBsuStats(ticker);
   } else {
     setOv('ov-d1','Нет D1 данных');
   }
 
-  // H1
-  if(h1Bars && h1Bars.length){
+  // H1 — skip if null (BSU-only redraw)
+  if(h1Bars === null) { /* skip */ }
+  else if(h1Bars && h1Bars.length){
     const labels = h1Bars.map(b=>tsToStr(b.t,'h'));
     drawChart('c-h1','cw-h1', h1Bars, lvl, normSpy(spyH1, h1Bars), labels);
     clrOv('ov-h1');
-  } else if(h1Bars !== undefined){
+  } else {
     setOv('ov-h1','Нет H1 данных');
   }
 
-  // M5
-  if(d && d.m5 && d.m5.length){
+  // M5 — skip if BSU-only redraw
+  if(h1Bars === null) { /* skip */ }
+  else if(d && d.m5 && d.m5.length){
     const labels = d.m5.map(b=>tsToStr(b.t,'m'));
     drawChart('c-m5','cw-m5', d.m5, lvl, null, labels);
     clrOv('ov-m5');
@@ -739,8 +743,102 @@ async function redrawAll(ticker){
   renderCharts(ticker, h1, spyH1);
 }
 
+// ─── BSU (Бар Создания Уровня) ────────────────────────────
+// U[ticker].bsuTimestamp — timestamp бара-БСУ
+
+function calcBsuStats(ticker){
+  const d = D[ticker], u = U[ticker];
+  if(!d?.d1?.length) return;
+
+  const bsuTs  = u.bsuTimestamp || null;
+  const level  = parseFloat(u.levelPrice) || null;
+  const bars   = d.d1;
+
+  // Find BSU index
+  const bsuIdx = bsuTs ? bars.findIndex(b => b.t === bsuTs) : -1;
+
+  // Bars to BSU = bars from BSU to last bar (inclusive of last, exclusive of BSU itself)
+  const barsCount = bsuIdx >= 0 ? (bars.length - 1 - bsuIdx) : '';
+
+  // Bars AFTER BSU
+  const afterBsu = bsuIdx >= 0 ? bars.slice(bsuIdx + 1) : [];
+
+  let lpCount = 0, closedBeyond = 0;
+
+  if(level !== null && afterBsu.length){
+    afterBsu.forEach(bar => {
+      // Хвост пробивает уровень в любую сторону
+      const wickPierced = bar.l <= level && bar.h >= level;
+      // Закрытие за уровнем: close пересёк уровень
+      const closedOver  = bar.c < level || bar.c > level; // but we need reference side
+
+      // Reference: what side was price BEFORE this bar (use open)
+      const wasAbove = bar.o >= level;
+      const closedSameSide = wasAbove ? bar.c >= level : bar.c <= level;
+
+      // ЛП: wick touched level but close stayed same side as open
+      if(wickPierced && closedSameSide) lpCount++;
+      // Закрытий за уровнем: close crossed to other side
+      if(wickPierced && !closedSameSide) closedBeyond++;
+    });
+  }
+
+  // Update U (don't trigger saveState to avoid loops)
+  u.barsToLevel   = barsCount !== '' ? String(barsCount) : '';
+  u.lpCount       = level !== null ? String(lpCount)       : '';
+  u.closedBeyond  = level !== null ? String(closedBeyond)  : '';
+
+  // Update DOM inputs
+  const setInp = (idx, val) => {
+    const inputs = document.querySelectorAll('.spec-inp');
+    if(inputs[idx]) inputs[idx].value = val;
+  };
+  setInp(0, u.barsToLevel);
+  setInp(1, u.lpCount);
+  setInp(2, u.closedBeyond);
+
+  saveState();
+}
+
+function attachBsuClick(ticker){
+  const canvas = document.getElementById('c-d1');
+  const wrap   = document.getElementById('cw-d1');
+  if(!canvas || !wrap) return;
+
+  // Clone to remove old listeners
+  const clone = canvas.cloneNode(true);
+  canvas.parentNode.replaceChild(clone, canvas);
+  const c = document.getElementById('c-d1');
+
+  c.addEventListener('click', e => {
+    const d = D[ticker];
+    if(!d?.d1?.length) return;
+    const rect  = c.getBoundingClientRect();
+    const mx    = e.clientX - rect.left;
+    const W     = c.clientWidth;
+    const PL = 4, PR = 60;
+    const cw = W - PL - PR;
+    const n  = d.d1.length;
+    const slotW = cw / n;
+    const barIdx = Math.floor((mx - PL) / slotW);
+    if(barIdx < 0 || barIdx >= n) return;
+
+    const clickedTs = d.d1[barIdx].t;
+
+    // Toggle BSU
+    if(U[ticker].bsuTimestamp === clickedTs){
+      U[ticker].bsuTimestamp = null;
+    } else {
+      U[ticker].bsuTimestamp = clickedTs;
+    }
+
+    calcBsuStats(ticker);
+    renderCharts(ticker, null, null); // redraw with BSU mark
+  });
+}
+
 // ─── DRAW CHART ───────────────────────────────────────────
-function drawChart(cid, wid, candles, level, spyNorm, labels){
+function drawChart(cid, wid, candles, level, spyNorm, labels, bsuTs){
   const canvas = document.getElementById(cid);
   const wrap   = document.getElementById(wid);
   if(!canvas||!wrap||!candles.length) return;
@@ -822,6 +920,33 @@ function drawChart(cid, wid, candles, level, spyNorm, labels){
     ctx.font=`bold ${FSZ}px JetBrains Mono,monospace`;
     ctx.textAlign='left';
     ctx.fillText(level.toFixed(2), PL+cw+3, ly+3.5);
+  }
+
+  // BSU vertical marker
+  if(bsuTs){
+    const bsuIdx = candles.findIndex(c=>c.t===bsuTs);
+    if(bsuIdx>=0){
+      const x = PL + bsuIdx*sw + sw/2;
+      // Vertical dashed line
+      ctx.strokeStyle='rgba(255,200,50,0.7)'; ctx.lineWidth=1.5;
+      ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(x,PT); ctx.lineTo(x,PT+pH); ctx.stroke();
+      ctx.setLineDash([]);
+      // Triangle marker at top
+      ctx.fillStyle='#ffc832';
+      ctx.beginPath();
+      ctx.moveTo(x,PT+2);
+      ctx.lineTo(x-5,PT+10);
+      ctx.lineTo(x+5,PT+10);
+      ctx.closePath();
+      ctx.fill();
+      // BSU label
+      ctx.fillStyle='#ffc832';
+      ctx.font=`bold ${FSZ}px JetBrains Mono,monospace`;
+      ctx.textAlign='center';
+      ctx.fillText('БСУ', x, PT+20);
+      ctx.textAlign='left';
+    }
   }
 
   // candles + volume (volume rendered inside chart area, bottom 18%)
