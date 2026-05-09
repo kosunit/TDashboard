@@ -801,14 +801,10 @@ function calcBsuStats(ticker){
 }
 
 function attachBsuClick(ticker){
-  const canvas = document.getElementById('c-d1');
-  const wrap   = document.getElementById('cw-d1');
-  if(!canvas || !wrap) return;
-
-  // Clone to remove old listeners
-  const clone = canvas.cloneNode(true);
-  canvas.parentNode.replaceChild(clone, canvas);
   const c = document.getElementById('c-d1');
+  if(!c) return;
+  if(c._bsuAttached) return; // already attached
+  c._bsuAttached = true;
 
   c.addEventListener('click', e => {
     const d = D[ticker];
@@ -824,16 +820,20 @@ function attachBsuClick(ticker){
     if(barIdx < 0 || barIdx >= n) return;
 
     const clickedTs = d.d1[barIdx].t;
+    const u = U[ticker];
 
     // Toggle BSU
-    if(U[ticker].bsuTimestamp === clickedTs){
-      U[ticker].bsuTimestamp = null;
+    if(u.bsuTimestamp === clickedTs){
+      u.bsuTimestamp = null;
     } else {
-      U[ticker].bsuTimestamp = clickedTs;
+      u.bsuTimestamp = clickedTs;
     }
 
     calcBsuStats(ticker);
-    renderCharts(ticker, null, null); // redraw with BSU mark
+
+    // Redraw D1 only
+    const labels = d.d1.map(b=>tsToStr(b.t,'d'));
+    drawChart('c-d1','cw-d1', d.d1, parseFloat(u.levelPrice)||null, normSpy(d.spyD1,d.d1), labels, u.bsuTimestamp||null);
   });
 }
 
