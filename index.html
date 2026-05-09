@@ -203,7 +203,7 @@ loadState();
 // Per-ticker API results
 const D = {};
 
-let activeFil = 'Все', activeIdx = 0;
+let activeFil = 'Все', activeIdx = 0, currentTicker = null;
 
 // ─── UTILS ────────────────────────────────────────────────
 const toYMD = d => d.toISOString().slice(0,10);
@@ -507,6 +507,7 @@ function removeTicker(t){
 
 // ─── RENDER CARD ──────────────────────────────────────────
 function showCard(ticker){
+  currentTicker = ticker;
   const meta = TICKERS.find(x=>x.t===ticker);
   const d = D[ticker];
   const u = U[ticker];
@@ -679,30 +680,32 @@ function renderCharts(ticker, h1Bars, spyH1){
     const labels = d.d1.map(b=>tsToStr(b.t,'d'));
     drawChart('c-d1','cw-d1', d.d1, lvl, normSpy(d.spyD1, d.d1), labels, bsuTs);
     clrOv('ov-d1');
-    attachBsuClick(ticker);
+    attachBsuClick();
     calcBsuStats(ticker);
   } else {
     setOv('ov-d1','Нет D1 данных');
   }
 
-  // H1 — skip if null (BSU-only redraw)
-  if(h1Bars === null) { /* skip */ }
-  else if(h1Bars && h1Bars.length){
-    const labels = h1Bars.map(b=>tsToStr(b.t,'h'));
-    drawChart('c-h1','cw-h1', h1Bars, lvl, normSpy(spyH1, h1Bars), labels);
-    clrOv('ov-h1');
-  } else {
-    setOv('ov-h1','Нет H1 данных');
+  // H1 — skip only if explicitly null (BSU-only redraw)
+  if(h1Bars !== null){
+    if(h1Bars && h1Bars.length){
+      const labels = h1Bars.map(b=>tsToStr(b.t,'h'));
+      drawChart('c-h1','cw-h1', h1Bars, lvl, normSpy(spyH1, h1Bars), labels);
+      clrOv('ov-h1');
+    } else if(h1Bars !== undefined){
+      setOv('ov-h1','Нет H1 данных');
+    }
   }
 
-  // M5 — skip if BSU-only redraw
-  if(h1Bars === null) { /* skip */ }
-  else if(d && d.m5 && d.m5.length){
-    const labels = d.m5.map(b=>tsToStr(b.t,'m'));
-    drawChart('c-m5','cw-m5', d.m5, lvl, null, labels);
-    clrOv('ov-m5');
-  } else if(d){
-    setOv('ov-m5','Нет M5 данных');
+  // M5 — skip only if explicitly null
+  if(h1Bars !== null){
+    if(d && d.m5 && d.m5.length){
+      const labels = d.m5.map(b=>tsToStr(b.t,'m'));
+      drawChart('c-m5','cw-m5', d.m5, lvl, null, labels);
+      clrOv('ov-m5');
+    } else if(d){
+      setOv('ov-m5','Нет M5 данных');
+    }
   }
 }
 
@@ -800,18 +803,20 @@ function calcBsuStats(ticker){
   saveState();
 }
 
-function attachBsuClick(ticker){
+function attachBsuClick(){
   const c = document.getElementById('c-d1');
-  if(!c) return;
-  if(c._bsuAttached) return; // already attached
+  if(!c || c._bsuAttached) return;
   c._bsuAttached = true;
 
   c.addEventListener('click', e => {
+    const ticker = currentTicker;
+    if(!ticker) return;
     const d = D[ticker];
     if(!d?.d1?.length) return;
-    const rect  = c.getBoundingClientRect();
-    const mx    = e.clientX - rect.left;
-    const W     = c.clientWidth;
+
+    const rect = c.getBoundingClientRect();
+    const mx   = e.clientX - rect.left;
+    const W    = c.clientWidth;
     const PL = 4, PR = 60;
     const cw = W - PL - PR;
     const n  = d.d1.length;
@@ -821,19 +826,18 @@ function attachBsuClick(ticker){
 
     const clickedTs = d.d1[barIdx].t;
     const u = U[ticker];
-
-    // Toggle BSU
-    if(u.bsuTimestamp === clickedTs){
-      u.bsuTimestamp = null;
-    } else {
-      u.bsuTimestamp = clickedTs;
-    }
+    u.bsuTimestamp = (u.bsuTimestamp === clickedTs) ? null : clickedTs;
 
     calcBsuStats(ticker);
 
-    // Redraw D1 only
-    const labels = d.d1.map(b=>tsToStr(b.t,'d'));
-    drawChart('c-d1','cw-d1', d.d1, parseFloat(u.levelPrice)||null, normSpy(d.spyD1,d.d1), labels, u.bsuTimestamp||null);
+    // Redraw only D1
+    const labels = d.d1.map(b => tsToStr(b.t,'d'));
+    drawChart('c-d1','cw-d1', d.d1,
+      parseFloat(u.levelPrice)||null,
+      normSpy(d.spyD1, d.d1),
+      labels,
+      u.bsuTimestamp||null
+    );
   });
 }
 
