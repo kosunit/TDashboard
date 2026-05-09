@@ -926,25 +926,26 @@ function drawChart(cid, wid, candles, level, spyNorm, labels, bsuTs){
     ctx.fillText(level.toFixed(2), PL+cw+3, ly+3.5);
   }
 
-  // BSU vertical marker
+  // candles + volume (volume rendered inside chart area, bottom 18%)
+  const n=candles.length, sw=cw/n;
+  const bw=Math.max(1, sw*0.55);
+  const maxV=Math.max(...candles.map(c=>c.v));
+  const volAreaH = pH * VOL_H_FRAC;
+  const volBase  = PT + pH;
+
+  // BSU vertical marker — draw before candles so candles appear on top
   if(bsuTs){
     const bsuIdx = candles.findIndex(c=>c.t===bsuTs);
     if(bsuIdx>=0){
       const x = PL + bsuIdx*sw + sw/2;
-      // Vertical dashed line
       ctx.strokeStyle='rgba(255,200,50,0.7)'; ctx.lineWidth=1.5;
       ctx.setLineDash([4,3]);
       ctx.beginPath(); ctx.moveTo(x,PT); ctx.lineTo(x,PT+pH); ctx.stroke();
       ctx.setLineDash([]);
-      // Triangle marker at top
       ctx.fillStyle='#ffc832';
       ctx.beginPath();
-      ctx.moveTo(x,PT+2);
-      ctx.lineTo(x-5,PT+10);
-      ctx.lineTo(x+5,PT+10);
-      ctx.closePath();
-      ctx.fill();
-      // BSU label
+      ctx.moveTo(x,PT+2); ctx.lineTo(x-5,PT+10); ctx.lineTo(x+5,PT+10);
+      ctx.closePath(); ctx.fill();
       ctx.fillStyle='#ffc832';
       ctx.font=`bold ${FSZ}px JetBrains Mono,monospace`;
       ctx.textAlign='center';
@@ -952,13 +953,6 @@ function drawChart(cid, wid, candles, level, spyNorm, labels, bsuTs){
       ctx.textAlign='left';
     }
   }
-
-  // candles + volume (volume rendered inside chart area, bottom 18%)
-  const n=candles.length, sw=cw/n;
-  const bw=Math.max(1, sw*0.55);
-  const maxV=Math.max(...candles.map(c=>c.v));
-  const volAreaH = pH * VOL_H_FRAC;  // pixels for volume
-  const volBase  = PT + pH;           // bottom of price area
 
   candles.forEach((c,i)=>{
     const x=PL+i*sw+sw/2;
